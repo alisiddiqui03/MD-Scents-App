@@ -11,7 +11,7 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     // Get.put() NOT needed here if you use bindings or lazyPut
     // But safe to use once
-    Get.lazyPut(() => HomeController());
+    //Get.lazyPut(() => HomeController());
     print("Saved Token:\n${controller.token.value}");
 
     return Scaffold(
