@@ -1,37 +1,156 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../modules/get_profile/bindings/get_profile_binding.dart';
-import '../modules/get_profile/views/get_profile_view.dart';
-import '../modules/home/bindings/home_binding.dart';
-import '../modules/home/views/home_view.dart';
-import '../modules/rewards/bindings/rewards_binding.dart';
-import '../modules/rewards/views/rewards_view.dart';
-import '../modules/splash/bindings/splash_binding.dart';
-import '../modules/splash/views/splash_view.dart';
+import 'middleware/role_middleware.dart';
+import '../../modules/user/auth/bindings/auth_binding.dart';
+import '../../modules/user/auth/views/auth_view.dart';
+import '../../modules/user/user_base/bindings/user_base_binding.dart';
+import '../../modules/user/user_base/views/user_base_layout.dart';
+import '../../modules/user/home/bindings/user_home_binding.dart';
+import '../../modules/user/home/views/user_home_view.dart';
+import '../../modules/user/product_detail/bindings/product_detail_binding.dart';
+import '../../modules/user/product_detail/views/product_detail_view.dart';
+import '../../modules/user/cart/bindings/cart_binding.dart';
+import '../../modules/user/cart/views/cart_view.dart';
+import '../../modules/user/checkout/bindings/checkout_binding.dart';
+import '../../modules/user/checkout/views/checkout_view.dart';
+import '../../modules/user/discount/bindings/discount_binding.dart';
+import '../../modules/user/discount/views/discount_view.dart';
+import '../../modules/user/profile/bindings/profile_binding.dart';
+import '../../modules/user/profile/views/profile_view.dart';
+
+import '../../modules/user/orders/views/orders_view.dart' as user_orders;
+import '../../modules/user/order_confirm/views/order_confirm_view.dart';
+import '../../modules/user/wishlist/views/wishlist_view.dart';
+import '../../modules/user/addresses/views/addresses_view.dart';
+import '../../modules/user/all_products/views/all_products_view.dart';
+
+import '../../modules/admin/admin_base/bindings/admin_base_binding.dart';
+import '../../modules/admin/admin_base/views/admin_base_layout.dart';
+import '../../modules/admin/dashboard/bindings/admin_dashboard_binding.dart';
+import '../../modules/admin/dashboard/views/admin_dashboard_view.dart';
+import '../../modules/admin/upload_product/bindings/upload_product_binding.dart';
+import '../../modules/admin/upload_product/views/upload_product_view.dart';
+import '../../modules/admin/inventory/bindings/inventory_binding.dart';
+import '../../modules/admin/inventory/views/inventory_view.dart';
+import '../../modules/admin/orders/bindings/orders_binding.dart';
+import '../../modules/admin/orders/views/orders_view.dart';
+import '../../modules/admin/settings/bindings/admin_settings_binding.dart';
+import '../../modules/admin/settings/views/admin_settings_view.dart';
 
 part 'app_routes.dart';
 
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.HOME;
+  static const INITIAL = Routes.ROOT;
 
-  static final routes = [
-    GetPage(name: _Paths.HOME, page: () => HomeView(), binding: HomeBinding()),
+  static final routes = <GetPage>[
+    // Root route resolves to a concrete page via middleware.
     GetPage(
-      name: _Paths.SPLASH,
-      page: () => const SplashView(),
-      binding: SplashBinding(),
+      name: _Paths.ROOT,
+      page: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      middlewares: [RoleMiddleware()],
+    ),
+
+    // Auth
+    GetPage(
+      name: _Paths.AUTH,
+      page: () => const AuthView(),
+      binding: AuthBinding(),
+    ),
+
+    // User base + tabs
+    GetPage(
+      name: _Paths.USER_BASE,
+      page: () => const UserBaseLayout(),
+      binding: UserBaseBinding(),
     ),
     GetPage(
-      name: _Paths.GET_PROFILE,
-      page: () => const GetProfileView(),
-      binding: GetProfileBinding(),
+      name: _Paths.USER_HOME,
+      page: () => const UserHomeView(),
+      binding: UserHomeBinding(),
     ),
     GetPage(
-      name: _Paths.REWARDS,
-      page: () => const RewardsView(),
-      binding: RewardsBinding(),
+      name: _Paths.USER_PRODUCT_DETAIL,
+      page: () => const ProductDetailView(),
+      binding: ProductDetailBinding(),
+    ),
+    GetPage(
+      name: _Paths.USER_CART,
+      page: () => const CartView(),
+      binding: CartBinding(),
+    ),
+    GetPage(
+      name: _Paths.USER_CHECKOUT,
+      page: () => const CheckoutView(),
+      binding: CheckoutBinding(),
+    ),
+    GetPage(
+      name: _Paths.USER_DISCOUNT,
+      page: () => const DiscountView(),
+      binding: DiscountBinding(),
+    ),
+    GetPage(
+      name: _Paths.USER_PROFILE,
+      page: () => const ProfileView(),
+      binding: ProfileBinding(),
+    ),
+
+    GetPage(
+      name: _Paths.USER_ORDERS,
+      page: () => const user_orders.OrdersView(),
+    ),
+    GetPage(
+      name: _Paths.USER_WISHLIST,
+      page: () => const WishlistView(),
+    ),
+    GetPage(
+      name: _Paths.USER_ADDRESSES,
+      page: () => const AddressesView(),
+    ),
+    GetPage(
+      name: _Paths.USER_ALL_PRODUCTS,
+      page: () => const AllProductsView(),
+    ),
+    GetPage(
+      name: _Paths.USER_ORDER_CONFIRM,
+      page: () => const OrderConfirmView(),
+    ),
+
+    // Admin base + tabs
+    GetPage(
+      name: _Paths.ADMIN_BASE,
+      page: () => const AdminBaseLayout(),
+      binding: AdminBaseBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_DASHBOARD,
+      page: () => const AdminDashboardView(),
+      binding: AdminDashboardBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_UPLOAD_PRODUCT,
+      page: () => const UploadProductView(),
+      binding: UploadProductBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_INVENTORY,
+      page: () => const InventoryView(),
+      binding: InventoryBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_ORDERS,
+      page: () => const OrdersView(),
+      binding: OrdersBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_SETTINGS,
+      page: () => const AdminSettingsView(),
+      binding: AdminSettingsBinding(),
     ),
   ];
 }
+

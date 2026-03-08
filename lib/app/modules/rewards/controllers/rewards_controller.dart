@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/theme/app_colors.dart';
 import 'package:flutter_application_1/app/data/models/rewards_model.dart';
 import 'package:flutter_application_1/app/data/providers/api_repositries.dart';
 import 'package:get/get.dart';
@@ -36,7 +37,16 @@ class RewardsController extends GetxController {
       errorMessage.value = e.toString().replaceFirst("Exception: ", "");
       profile.value = null;
       print("❌ Reward Error: $e");
-      Get.snackbar("Error", errorMessage.value, backgroundColor: Colors.red);
+      Get.snackbar(
+        'Something went wrong',
+        errorMessage.value,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+        icon: const Icon(Icons.info_outline_rounded, color: Colors.white),
+      );
     } finally {
       isLoading(false);
     }

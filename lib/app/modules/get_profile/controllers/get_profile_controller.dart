@@ -1,7 +1,8 @@
 // lib/app/modules/get_profile/controllers/get_profile_controller.dart
 
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/theme/app_colors.dart';
 import 'package:flutter_application_1/app/data/providers/api_repositries.dart';
 import 'package:flutter_application_1/app/data/models/get_profile_model.dart';
 
@@ -39,7 +40,16 @@ class GetProfileController extends GetxController {
       errorMessage.value = e.toString().replaceFirst("Exception: ", "");
       profile.value = null;
       print("❌ Profile Error: $e");
-      Get.snackbar("Error", errorMessage.value, backgroundColor: Colors.red);
+      Get.snackbar(
+        'Something went wrong',
+        errorMessage.value,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+        icon: const Icon(Icons.info_outline_rounded, color: Colors.white),
+      );
     } finally {
       isLoading(false);
     }
