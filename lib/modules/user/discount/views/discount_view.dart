@@ -6,6 +6,7 @@ import '../controllers/discount_controller.dart';
 import '../../user_base/controllers/user_base_controller.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/services/product_service.dart';
 
 class DiscountView extends GetView<DiscountController> {
   const DiscountView({super.key});
@@ -36,22 +37,27 @@ class DiscountView extends GetView<DiscountController> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildActiveDiscountBanner(),
-            const SizedBox(height: 24),
-            Text('Available Coupons', style: AppTextStyles.titleLarge),
-            const SizedBox(height: 12),
-            ..._coupons.map((c) => _CouponCard(coupon: c)),
-            const SizedBox(height: 24),
-            Text('Boost Your Discount', style: AppTextStyles.titleLarge),
-            const SizedBox(height: 12),
-            _buildBoostCard(),
-            const SizedBox(height: 32),
-          ],
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () => ProductService.to.refreshCatalogFromServer(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildActiveDiscountBanner(),
+              const SizedBox(height: 24),
+              Text('Available Coupons', style: AppTextStyles.titleLarge),
+              const SizedBox(height: 12),
+              ..._coupons.map((c) => _CouponCard(coupon: c)),
+              const SizedBox(height: 24),
+              Text('Boost Your Discount', style: AppTextStyles.titleLarge),
+              const SizedBox(height: 12),
+              _buildBoostCard(),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
@@ -200,30 +206,34 @@ class DiscountView extends GetView<DiscountController> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                controller.setDiscount(
-                    (controller.currentDiscount.value + 5)
-                        .clamp(5, 20)
-                        .toDouble());
-                Get.snackbar(
-                  '🎉 Discount Boosted!',
-                  'Your discount is now ${controller.currentDiscount.value.toStringAsFixed(0)}% OFF',
-                  snackPosition: SnackPosition.TOP,
-                  backgroundColor: AppColors.success,
-                  colorText: Colors.white,
-                  borderRadius: 12,
-                  margin: const EdgeInsets.all(12),
-                );
-              },
-              icon: const Icon(Icons.play_circle_outline, size: 20),
-              label: const Text('Watch Ad to Boost'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+            child: Obx(
+              () => ElevatedButton.icon(
+                onPressed: controller.isShowingRewardAd.value
+                    ? null
+                    : controller.watchAdAndBoostDiscount,
+                icon: controller.isShowingRewardAd.value
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.play_circle_outline, size: 20),
+                label: Text(
+                  controller.isShowingRewardAd.value
+                      ? 'Loading Ad...'
+                      : 'Watch Ad to Boost',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ),
           ),

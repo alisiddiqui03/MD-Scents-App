@@ -108,11 +108,19 @@ class AuthService extends GetxService {
   }
 
   Future<void> signOut() async {
-    // ── TODO: Uncomment when Firebase Auth is wired ──────────────────────
-    // await _auth.signOut();
-    // ─────────────────────────────────────────────────────────────────────
+    await _auth.signOut();
     currentUser.value = null;
     firebaseUser.value = null;
+  }
+
+  /// Sends Firebase password-reset email (same for every role: user / admin).
+  /// User opens link from email → sets new password → signs in with email/password.
+  ///
+  /// Configure in Firebase Console:
+  /// - Authentication → Templates → Password reset (email copy & sender)
+  /// - Authentication → Settings → Authorized domains (your domain / localhost)
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
   }
 }
 

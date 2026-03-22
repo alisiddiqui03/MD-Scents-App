@@ -19,11 +19,17 @@ import '../../modules/user/discount/views/discount_view.dart';
 import '../../modules/user/profile/bindings/profile_binding.dart';
 import '../../modules/user/profile/views/profile_view.dart';
 
+import '../../modules/user/orders/bindings/user_orders_binding.dart';
 import '../../modules/user/orders/views/orders_view.dart' as user_orders;
 import '../../modules/user/order_confirm/views/order_confirm_view.dart';
+import '../../modules/user/wishlist/bindings/wishlist_binding.dart';
 import '../../modules/user/wishlist/views/wishlist_view.dart';
+import '../../modules/user/addresses/bindings/addresses_binding.dart';
 import '../../modules/user/addresses/views/addresses_view.dart';
+import '../../modules/user/all_products/bindings/all_products_binding.dart';
 import '../../modules/user/all_products/views/all_products_view.dart';
+import '../../modules/user/featured_products/bindings/featured_products_binding.dart';
+import '../../modules/user/featured_products/views/featured_products_view.dart';
 
 import '../../modules/admin/admin_base/bindings/admin_base_binding.dart';
 import '../../modules/admin/admin_base/views/admin_base_layout.dart';
@@ -102,18 +108,27 @@ class AppPages {
     GetPage(
       name: _Paths.USER_ORDERS,
       page: () => const user_orders.OrdersView(),
+      binding: UserOrdersBinding(),
     ),
     GetPage(
       name: _Paths.USER_WISHLIST,
       page: () => const WishlistView(),
+      binding: WishlistBinding(),
     ),
     GetPage(
       name: _Paths.USER_ADDRESSES,
       page: () => const AddressesView(),
+      binding: AddressesBinding(),
     ),
     GetPage(
       name: _Paths.USER_ALL_PRODUCTS,
       page: () => const AllProductsView(),
+      binding: AllProductsBinding(),
+    ),
+    GetPage(
+      name: _Paths.USER_FEATURED_PRODUCTS,
+      page: () => const FeaturedProductsView(),
+      binding: FeaturedProductsBinding(),
     ),
     GetPage(
       name: _Paths.USER_ORDER_CONFIRM,

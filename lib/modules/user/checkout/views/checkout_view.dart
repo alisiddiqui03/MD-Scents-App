@@ -26,30 +26,32 @@ class CheckoutView extends GetView<CheckoutController> {
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Placeholder Checkout Screen',
-              style: AppTextStyles.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Future work: COD, Bank Transfer with receipt upload, and payment status summary.',
-              style: AppTextStyles.bodyMedium,
-            ),
-            const Spacer(),
-            Obx(
-              () => ElevatedButton(
-                onPressed: controller.isProcessing.value ? null : () {},
-                child: controller.isProcessing.value
-                    ? const CircularProgressIndicator()
-                    : const Text('Place Order'),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Placeholder Checkout Screen',
+                style: AppTextStyles.titleLarge,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                'Future work: COD, Bank Transfer with receipt upload, and payment status summary.',
+                style: AppTextStyles.bodyMedium,
+              ),
+              const Spacer(),
+              Obx(
+                () => ElevatedButton(
+                  onPressed: controller.isProcessing.value ? null : () {},
+                  child: controller.isProcessing.value
+                      ? const CircularProgressIndicator()
+                      : const Text('Place Order'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

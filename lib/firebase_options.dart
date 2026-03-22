@@ -41,48 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBfxHvF3ZeI015KLPM0Xj8IMBN0xIF4mu8',
-    appId: '1:159320239371:web:23ab933a84d6974255860e',
-    messagingSenderId: '159320239371',
-    projectId: 'md-scents',
-    authDomain: 'md-scents.firebaseapp.com',
-    storageBucket: 'md-scents.firebasestorage.app',
-    measurementId: 'G-QX1JEDNB4C',
+    apiKey: 'AIzaSyDMIpOk3UVOSdAmhnFbU43G-j5LgWgFicU',
+    appId: '1:206439401804:web:9fa132df370b229270a7e9',
+    messagingSenderId: '206439401804',
+    projectId: 'md-scents-perfumes',
+    authDomain: 'md-scents-perfumes.firebaseapp.com',
+    storageBucket: 'md-scents-perfumes.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBHSTs27IspDljjurZWAWoU-Xn04u8q_yI',
-    appId: '1:159320239371:android:dbae97488dbf920f55860e',
-    messagingSenderId: '159320239371',
-    projectId: 'md-scents',
-    storageBucket: 'md-scents.firebasestorage.app',
+    apiKey: 'AIzaSyDQ-9aKRfMA45SYpTTG_QRaopzJJYcWFdc',
+    appId: '1:206439401804:android:994cf4979181f88c70a7e9',
+    messagingSenderId: '206439401804',
+    projectId: 'md-scents-perfumes',
+    storageBucket: 'md-scents-perfumes.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDG6ZN-UzF5QMjkvnfU225mtLypTJo4K70',
-    appId: '1:159320239371:ios:3d42269d4212775155860e',
-    messagingSenderId: '159320239371',
-    projectId: 'md-scents',
-    storageBucket: 'md-scents.firebasestorage.app',
-    iosBundleId: 'com.example.flutterApplication1',
+    apiKey: 'AIzaSyDtFMZxoo4a-p3-WAEEw4G5T1S2P3zwe4Y',
+    appId: '1:206439401804:ios:a9db57a4335f750b70a7e9',
+    messagingSenderId: '206439401804',
+    projectId: 'md-scents-perfumes',
+    storageBucket: 'md-scents-perfumes.firebasestorage.app',
+    iosBundleId: 'com.mdscents.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDG6ZN-UzF5QMjkvnfU225mtLypTJo4K70',
-    appId: '1:159320239371:ios:3d42269d4212775155860e',
-    messagingSenderId: '159320239371',
-    projectId: 'md-scents',
-    storageBucket: 'md-scents.firebasestorage.app',
+    apiKey: 'AIzaSyDtFMZxoo4a-p3-WAEEw4G5T1S2P3zwe4Y',
+    appId: '1:206439401804:ios:7b27288a51e2ac0970a7e9',
+    messagingSenderId: '206439401804',
+    projectId: 'md-scents-perfumes',
+    storageBucket: 'md-scents-perfumes.firebasestorage.app',
     iosBundleId: 'com.example.flutterApplication1',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBfxHvF3ZeI015KLPM0Xj8IMBN0xIF4mu8',
-    appId: '1:159320239371:web:4d3085a0503f31d855860e',
-    messagingSenderId: '159320239371',
-    projectId: 'md-scents',
-    authDomain: 'md-scents.firebaseapp.com',
-    storageBucket: 'md-scents.firebasestorage.app',
-    measurementId: 'G-FQVP5EM1RT',
+    apiKey: 'AIzaSyDMIpOk3UVOSdAmhnFbU43G-j5LgWgFicU',
+    appId: '1:206439401804:web:f43e16522aff31a970a7e9',
+    messagingSenderId: '206439401804',
+    projectId: 'md-scents-perfumes',
+    authDomain: 'md-scents-perfumes.firebaseapp.com',
+    storageBucket: 'md-scents-perfumes.firebasestorage.app',
   );
 }

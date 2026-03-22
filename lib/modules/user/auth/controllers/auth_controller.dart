@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/app/routes/app_pages.dart';
 import 'package:get/get.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../app/services/auth_service.dart';
+import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 
 enum AuthTab { login, register, forgot }
@@ -25,11 +26,24 @@ class AuthController extends GetxController {
   // ── Tab switching ─────────────────────────────────────────────────────────
   void setTab(AuthTab tab) {
     activeTab.value = tab;
-    // Clear fields when switching tabs
-    emailController.clear();
-    passwordController.clear();
-    nameController.clear();
-    confirmPasswordController.clear();
+    // Avoid wiping email when opening "Forgot password" from Sign In.
+    switch (tab) {
+      case AuthTab.login:
+        nameController.clear();
+        confirmPasswordController.clear();
+        break;
+      case AuthTab.register:
+        emailController.clear();
+        passwordController.clear();
+        nameController.clear();
+        confirmPasswordController.clear();
+        break;
+      case AuthTab.forgot:
+        passwordController.clear();
+        nameController.clear();
+        confirmPasswordController.clear();
+        break;
+    }
   }
 
   void togglePasswordVisibility() =>
@@ -38,7 +52,7 @@ class AuthController extends GetxController {
   void toggleConfirmVisibility() =>
       obscureConfirm.value = !obscureConfirm.value;
 
-  // ── Sign In ───────────────────────────────────────────────────────────────
+  // ── Sign In (Firebase Email/Password) ─────────────────────────────────────
   Future<void> loginWithEmail() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
@@ -54,17 +68,15 @@ class AuthController extends GetxController {
 
     try {
       isLoading.value = true;
-      // ── TODO: Replace with real Firebase Auth ──────────────────────────
-      // await FirebaseAuth.instance.signInWithEmailAndPassword(
-      //   email: email, password: password);
-      // ──────────────────────────────────────────────────────────────────
-      final asAdmin = email.toLowerCase().contains('admin');
-      await _authService.debugSetMockUser(email: email, asAdmin: asAdmin);
-      if (asAdmin) {
+      await _authService.signInWithEmail(email, password);
+
+      if (_authService.isAdmin) {
         Get.offAllNamed(Routes.ADMIN_BASE);
       } else {
         Get.offAllNamed(Routes.USER_BASE);
       }
+    } on FirebaseAuthException catch (e) {
+      _snack('Sign In Failed', e.message ?? e.code);
     } catch (e) {
       _snack('Sign In Failed', e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -72,7 +84,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // ── Sign Up ───────────────────────────────────────────────────────────────
+  // ── Sign Up (Firebase Email/Password) ─────────────────────────────────────
   Future<void> registerWithEmail() async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
@@ -98,19 +110,14 @@ class AuthController extends GetxController {
 
     try {
       isLoading.value = true;
-      // ── TODO: Replace with real Firebase Auth ──────────────────────────
-      // final cred = await FirebaseAuth.instance
-      //     .createUserWithEmailAndPassword(email: email, password: password);
-      // await cred.user?.updateDisplayName(name);
-      // Save user doc to Firestore:
-      // await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
-      //   'uid': cred.user!.uid, 'email': email,
-      //   'displayName': name, 'role': 'user',
-      //   'createdAt': FieldValue.serverTimestamp(),
-      // });
-      // ──────────────────────────────────────────────────────────────────
-      await _authService.debugSetMockUser(email: email, asAdmin: false);
+      await _authService.registerWithEmail(
+        email: email,
+        password: password,
+        displayName: name,
+      );
       Get.offAllNamed(Routes.USER_BASE);
+    } on FirebaseAuthException catch (e) {
+      _snack('Sign Up Failed', e.message ?? e.code);
     } catch (e) {
       _snack('Sign Up Failed', e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -118,7 +125,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // ── Forgot Password ───────────────────────────────────────────────────────
+  // ── Forgot Password (Firebase — same flow for customers & admin emails) ─
   Future<void> sendPasswordReset() async {
     final email = emailController.text.trim();
 
@@ -129,26 +136,42 @@ class AuthController extends GetxController {
 
     try {
       isLoading.value = true;
-      // ── TODO: Replace with real Firebase Auth ──────────────────────────
-      // await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      // ──────────────────────────────────────────────────────────────────
-      await Future.delayed(const Duration(seconds: 1)); // simulate network
+      await _authService.sendPasswordResetEmail(email);
       Get.snackbar(
-        'Email Sent',
-        'Password reset link sent to $email',
+        'Check your email',
+        'We sent a reset link to $email. Open it, choose a new password, then sign in here.',
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.success,
         colorText: Colors.white,
         borderRadius: 12,
         margin: const EdgeInsets.all(12),
         icon: const Icon(Icons.mark_email_read_outlined, color: Colors.white),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 5),
       );
       setTab(AuthTab.login);
+    } on FirebaseAuthException catch (e) {
+      _snack(
+        'Could not send reset email',
+        _resetEmailMessage(e),
+      );
     } catch (e) {
-      _snack('Failed', e.toString().replaceFirst('Exception: ', ''));
+      _snack('Could not send reset email',
+          e.toString().replaceFirst('Exception: ', ''));
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  String _resetEmailMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'That email address is not valid.';
+      case 'user-not-found':
+        return 'No account uses this email. Sign up or check the spelling.';
+      case 'too-many-requests':
+        return 'Too many attempts. Wait a few minutes and try again.';
+      default:
+        return e.message ?? e.code;
     }
   }
 

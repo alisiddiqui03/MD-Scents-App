@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "159320239371",
-    "project_id": "md-scents",
-    "storage_bucket": "md-scents.firebasestorage.app"
+    "project_number": "206439401804",
+    "project_id": "md-scents-perfumes",
+    "storage_bucket": "md-scents-perfumes.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:159320239371:android:dbae97488dbf920f55860e",
+        "mobilesdk_app_id": "1:206439401804:android:994cf4979181f88c70a7e9",
         "android_client_info": {
-          "package_name": "com.example.flutter_application_1"
+          "package_name": "com.mdscents.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBHSTs27IspDljjurZWAWoU-Xn04u8q_yI"
+          "current_key": "AIzaSyDQ-9aKRfMA45SYpTTG_QRaopzJJYcWFdc"
         }
       ],
       "services": {

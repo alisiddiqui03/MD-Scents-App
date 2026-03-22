@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../app/widgets/loading_overlay.dart';
 
 class AuthView extends GetView<AuthController> {
   const AuthView({super.key});
@@ -12,14 +13,21 @@ class AuthView extends GetView<AuthController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 16),
-              _buildLogo(),
+        child: Obx(
+          () => LoadingOverlay(
+            isLoading: controller.isLoading.value,
+            title: 'Please wait',
+            subtitle: 'Processing your request…',
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 16),
+                  _buildLogo(),
               const SizedBox(height: 28),
 
               // ── Tab switcher ─────────────────────────────────────────────
@@ -57,21 +65,15 @@ class AuthView extends GetView<AuthController> {
                       textColor: AppColors.textDark,
                       borderColor: Colors.grey.shade300,
                     ),
-                    const SizedBox(height: 12),
-                    _SocialButton(
-                      onTap: controller.loginWithPhone,
-                      icon: const Icon(Icons.phone_iphone,
-                          color: Colors.white, size: 20),
-                      label: 'Continue with Phone / OTP',
-                      backgroundColor: AppColors.primary,
-                      textColor: Colors.white,
-                    ),
+                    // Phone / OTP — hidden until wired with Firebase
                   ],
                 );
               }),
 
-              const SizedBox(height: 24),
-            ],
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -279,7 +281,7 @@ class AuthView extends GetView<AuthController> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Enter your email and we\'ll send you a link to reset your password.',
+                  'Enter your account email. We\'ll send a reset link — check inbox & spam. Same flow for customers and admins using email & password.',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.primary,
                     fontSize: 13,
@@ -430,6 +432,17 @@ class _InputField extends StatelessWidget {
     this.type = TextInputType.text,
   });
 
+  Iterable<String>? get _autofillHints {
+    if (obscure) return const [AutofillHints.password];
+    if (type == TextInputType.emailAddress) {
+      return const [AutofillHints.email];
+    }
+    if (hint.toLowerCase().contains('name')) {
+      return const [AutofillHints.name];
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -449,10 +462,15 @@ class _InputField extends StatelessWidget {
         controller: controller,
         obscureText: obscure,
         keyboardType: type,
+        autocorrect: false,
+        enableSuggestions: !obscure,
+        autofillHints: _autofillHints,
         style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textDark),
         cursorColor: AppColors.primary,
         decoration: InputDecoration(
           hintText: hint,
+          filled: true,
+          fillColor: Colors.white,
           hintStyle: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.textDark.withValues(alpha: 0.35),
           ),

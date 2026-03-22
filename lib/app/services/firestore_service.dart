@@ -15,6 +15,31 @@ class FirestoreService {
   static CollectionReference<Map<String, dynamic>> get ordersCollection =>
       instance.collection('orders');
 
+  /// User-specific orders: users/{userId}/orders
+  static CollectionReference<Map<String, dynamic>> usersOrdersRef(String uid) =>
+      usersCollection.doc(uid).collection('orders');
+
+  /// User-specific wishlist: users/{userId}/wishlist
+  static CollectionReference<Map<String, dynamic>> usersWishlistRef(String uid) =>
+      usersCollection.doc(uid).collection('wishlist');
+
+  /// User delivery addresses: users/{userId}/addresses
+  static CollectionReference<Map<String, dynamic>> usersAddressesRef(String uid) =>
+      usersCollection.doc(uid).collection('addresses');
+
+  /// User-specific reviews: users/{userId}/reviews
+  static CollectionReference<Map<String, dynamic>> usersReviewsRef(String uid) =>
+      usersCollection.doc(uid).collection('reviews');
+
+  /// Product-specific reviews: products/{productId}/reviews
+  static CollectionReference<Map<String, dynamic>> productReviewsRef(
+          String productId) =>
+      productsCollection.doc(productId).collection('reviews');
+
+  /// All orders across users (for admin)
+  static Query<Map<String, dynamic>> get ordersCollectionGroup =>
+      instance.collectionGroup('orders');
+
   static CollectionReference<Map<String, dynamic>> get discountsCollection =>
       instance.collection('discounts');
 }

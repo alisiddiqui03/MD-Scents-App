@@ -6,6 +6,8 @@ import '../../dashboard/views/admin_dashboard_view.dart';
 import '../../inventory/views/inventory_view.dart';
 import '../../orders/views/orders_view.dart';
 import '../../settings/views/admin_settings_view.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/routes/app_pages.dart';
 
 class AdminBaseLayout extends GetView<AdminBaseController> {
   const AdminBaseLayout({super.key});
@@ -26,27 +28,39 @@ class AdminBaseLayout extends GetView<AdminBaseController> {
               AdminSettingsView(),
             ],
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: index,
-            onTap: controller.onTabSelected,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.dashboard_outlined),
-                label: 'Dashboard',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.inventory_2_outlined),
-                label: 'Inventory',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.receipt_long_outlined),
-                label: 'Orders',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                label: 'Settings',
-              ),
-            ],
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => Get.toNamed(Routes.ADMIN_UPLOAD_PRODUCT),
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+          bottomNavigationBar: BottomAppBar(
+            shape: const CircularNotchedRectangle(),
+            notchMargin: 6,
+            child: BottomNavigationBar(
+              currentIndex: index,
+              onTap: controller.onTabSelected,
+              type: BottomNavigationBarType.fixed,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  label: 'Inventory',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  label: 'Orders',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  label: 'Profile',
+                ),
+              ],
+            ),
           ),
         );
       },

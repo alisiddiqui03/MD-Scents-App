@@ -5,6 +5,7 @@ import '../controllers/cart_controller.dart';
 import '../../user_base/controllers/user_base_controller.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../app/services/product_service.dart';
 
 class CartView extends GetView<CartController> {
   const CartView({super.key});
@@ -85,7 +86,12 @@ class CartView extends GetView<CartController> {
               ),
             ),
           ),
-          _buildCheckoutBar(),
+          SafeArea(
+            top: false,
+            maintainBottomViewPadding: true,
+            minimum: EdgeInsets.zero,
+            child: _buildCheckoutBar(),
+          ),
         ],
       ),
     );
@@ -207,94 +213,148 @@ class CartView extends GetView<CartController> {
   }
 
   Widget _buildReceiptUpload() {
-    return GestureDetector(
-      onTap: controller.uploadReceipt,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: AppColors.secondary.withValues(alpha: 0.3),
+    return Obx(() {
+      final uploaded = controller.receiptUploaded.value;
+      final uploading = controller.isUploadingReceipt.value;
+
+      return GestureDetector(
+        onTap: uploading ? null : controller.uploadReceipt,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.secondary.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: uploading
+                    ? const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.upload_file_outlined,
+                        color: AppColors.secondary, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      uploaded ? 'Receipt Uploaded' : 'Upload Payment Receipt',
+                      style: AppTextStyles.bodyLarge
+                          .copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      uploaded
+                          ? 'Tap to replace screenshot.'
+                          : 'Take a screenshot of your transfer and upload it here.',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textDark.withValues(alpha: 0.5),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (uploaded)
+                IconButton(
+                  onPressed: controller.clearReceipt,
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Remove receipt',
+                )
+              else
+                Icon(
+                  Icons.chevron_right,
+                  color: AppColors.textDark.withValues(alpha: 0.4),
+                ),
+            ],
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.upload_file_outlined,
-                  color: AppColors.secondary, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Upload Payment Receipt',
-                    style: AppTextStyles.bodyLarge
-                        .copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    'Take a screenshot of your transfer and upload it here.',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textDark.withValues(alpha: 0.5),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Obx(
-              () => Icon(
-                controller.receiptUploaded.value
-                    ? Icons.check_circle
-                    : Icons.chevron_right,
-                color: controller.receiptUploaded.value
-                    ? AppColors.success
-                    : AppColors.textDark.withValues(alpha: 0.4),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+      );
+    });
   }
 
   // ── Order summary ───────────────────────────────────────────────────────────
 
   Widget _buildOrderSummary() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _SummaryRow(label: 'Subtotal', value: controller.subtotal),
-          const Divider(height: 20),
-          Obx(
-            () => _SummaryRow(
+    return Obx(() {
+      // Rebuild when cart or store discounts change
+      ProductService.to.globalDiscountPercent.value;
+      ProductService.to.productsVersion.value;
+      final gross = controller.invoiceGrossSubtotal;
+      final prodSav = controller.invoiceProductSavingsTotal;
+      final globSav = controller.invoiceGlobalSavingsTotal;
+      final hasSplit = prodSav > 0.009 || globSav > 0.009;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Order summary',
+              style: AppTextStyles.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (hasSplit) ...[
+              _SummaryRow(
+                label: 'Items (list price)',
+                value: gross,
+              ),
+              if (prodSav > 0.009) ...[
+                const SizedBox(height: 8),
+                _SummaryDiscountRow(
+                  label: 'Product discounts',
+                  value: prodSav,
+                ),
+              ],
+              if (globSav > 0.009) ...[
+                const SizedBox(height: 8),
+                _SummaryDiscountRow(
+                  label: 'Store discount',
+                  value: globSav,
+                ),
+              ],
+              const Divider(height: 20),
+            ]             else
+              _SummaryRow(
+                label: 'Subtotal',
+                value: controller.subtotal,
+              ),
+            const SizedBox(height: 4),
+            _SummaryRow(
               label: 'Total',
               value: controller.total,
               isTotal: true,
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 
   // ── Bottom checkout bar ─────────────────────────────────────────────────────
@@ -304,11 +364,13 @@ class CartView extends GetView<CartController> {
       final isBankTransfer =
           controller.selectedPayment.value == PaymentMethod.bankTransfer;
       final receiptReady = controller.receiptUploaded.value;
-      final canPlace = !isBankTransfer || receiptReady;
+      final isPlacing = controller.isPlacing.value;
+      final canPlace = (!isBankTransfer || receiptReady) && !isPlacing;
       final label = isBankTransfer ? 'Confirm Order' : 'Place Order';
+      final showEnabledStyle = canPlace || isPlacing;
 
       return Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -348,18 +410,18 @@ class CartView extends GetView<CartController> {
                 duration: const Duration(milliseconds: 200),
                 height: 54,
                 decoration: BoxDecoration(
-                  gradient: canPlace
+                  gradient: showEnabledStyle
                       ? const LinearGradient(
                           colors: [AppColors.secondary, AppColors.primary],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         )
                       : null,
-                  color: canPlace
+                  color: showEnabledStyle
                       ? null
                       : AppColors.textDark.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: canPlace
+                  boxShadow: showEnabledStyle
                       ? [
                           BoxShadow(
                             color: AppColors.primary.withValues(alpha: 0.3),
@@ -370,14 +432,23 @@ class CartView extends GetView<CartController> {
                       : null,
                 ),
                 child: Center(
-                  child: Text(
-                    label,
-                    style: AppTextStyles.buttonText.copyWith(
-                      color: canPlace
-                          ? Colors.white
-                          : AppColors.textDark.withValues(alpha: 0.35),
-                    ),
-                  ),
+                  child: isPlacing
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          label,
+                          style: AppTextStyles.buttonText.copyWith(
+                            color: canPlace
+                                ? Colors.white
+                                : AppColors.textDark.withValues(alpha: 0.35),
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -398,11 +469,18 @@ class _CartItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = Color(
-      int.parse('FF${item.imagePlaceholder}', radix: 16),
-    );
+    return Obx(() {
+      ProductService.to.globalDiscountPercent.value;
+      ProductService.to.productsVersion.value;
+      final product = ProductService.to.findById(item.id);
+      ProductPriceBreakdown? bd;
+      double? listLine;
+      if (product != null) {
+        bd = ProductService.to.breakdown(product);
+        listLine = product.price * item.qty.value;
+      }
 
-    return Container(
+      return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -423,15 +501,13 @@ class _CartItemCard extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: bgColor.withValues(alpha: 0.3),
+              color: AppColors.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Icon(
-                Icons.water_drop_rounded,
-                color: bgColor.withValues(alpha: 0.8),
-                size: 32,
-              ),
+            child: const Icon(
+              Icons.water_drop_rounded,
+              color: AppColors.primary,
+              size: 32,
             ),
           ),
           const SizedBox(width: 14),
@@ -448,11 +524,42 @@ class _CartItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'PKR ${item.price.toStringAsFixed(0)}',
+                  'PKR ${item.unitPrice.toStringAsFixed(0)} / unit',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textDark.withValues(alpha: 0.55),
                   ),
                 ),
+                if (bd != null &&
+                    (bd.productDiscountPercent > 0 ||
+                        bd.globalDiscountPercent > 0)) ...[
+                  const SizedBox(height: 4),
+                  if (listLine != null)
+                    Text(
+                      'Was PKR ${listLine.toStringAsFixed(0)} (list × qty)',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 10,
+                        color: AppColors.textDark.withValues(alpha: 0.4),
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  const SizedBox(height: 2),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (bd.productDiscountPercent > 0)
+                        _MiniChip(
+                          label:
+                              '−${bd.productDiscountPercent.toStringAsFixed(0)}% product',
+                        ),
+                      if (bd.globalDiscountPercent > 0)
+                        _MiniChip(
+                          label:
+                              '−${bd.globalDiscountPercent.toStringAsFixed(0)}% store',
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -470,18 +577,42 @@ class _CartItemCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Obx(
-                () => Text(
-                  'PKR ${(item.price * item.qty.value).toStringAsFixed(0)}',
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+              Text(
+                'PKR ${(item.unitPrice * item.qty.value).toStringAsFixed(0)}',
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+    });
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  final String label;
+
+  const _MiniChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.bodyMedium.copyWith(
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          color: AppColors.success,
+        ),
       ),
     );
   }
@@ -584,7 +715,42 @@ class _PaymentTile extends StatelessWidget {
   }
 }
 
-// ── Summary row ───────────────────────────────────────────────────────────────
+// ── Summary rows ──────────────────────────────────────────────────────────────
+
+class _SummaryDiscountRow extends StatelessWidget {
+  final String label;
+  final double value;
+
+  const _SummaryDiscountRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.success.withValues(alpha: 0.95),
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+        Text(
+          '− PKR ${value.toStringAsFixed(0)}',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.success,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _SummaryRow extends StatelessWidget {
   final String label;

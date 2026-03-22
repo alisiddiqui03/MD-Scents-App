@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../app/data/models/wishlist_item.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
-class WishlistView extends StatelessWidget {
+import '../controllers/wishlist_controller.dart';
+
+class WishlistView extends GetView<WishlistController> {
   const WishlistView({super.key});
 
   @override
@@ -24,92 +27,90 @@ class WishlistView extends StatelessWidget {
         ),
         centerTitle: true,
         actions: [
-          TextButton(
-            onPressed: () => Get.snackbar(
-              'Wishlist Cleared',
-              'All items removed from wishlist.',
-              snackPosition: SnackPosition.TOP,
-              backgroundColor: AppColors.primary,
-              colorText: Colors.white,
-              borderRadius: 12,
-              margin: const EdgeInsets.all(12),
-            ),
-            child: Text(
-              'Clear',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.danger,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          Obx(() => controller.items.isEmpty
+              ? const SizedBox.shrink()
+              : TextButton(
+                  onPressed: () async {
+                    await controller.clearAll();
+                    Get.snackbar(
+                      'Wishlist Cleared',
+                      'All items removed from wishlist.',
+                      snackPosition: SnackPosition.TOP,
+                      backgroundColor: AppColors.primary,
+                      colorText: Colors.white,
+                      borderRadius: 12,
+                      margin: const EdgeInsets.all(12),
+                    );
+                  },
+                  child: Text(
+                    'Clear',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: _wishlistItems
-            .map((item) => _WishlistCard(item: item))
-            .toList(),
-      ),
+      body: Obx(() {
+        Future<void> onRefresh() => controller.refreshWishlist();
+
+        if (controller.isLoading.value) {
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.45,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ],
+            ),
+          );
+        }
+        if (controller.items.isEmpty) {
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.55,
+                  child: Center(
+                    child: Text(
+                      'No wishlist items yet.',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textDark.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            children: controller.items
+                .map((item) => _WishlistCard(item: item))
+                .toList(),
+          ),
+        );
+      }),
     );
   }
 }
 
-class _WishlistItem {
-  final String name;
-  final String brand;
-  final String price;
-  final String imageUrl;
-  final double rating;
-
-  const _WishlistItem({
-    required this.name,
-    required this.brand,
-    required this.price,
-    required this.imageUrl,
-    required this.rating,
-  });
-}
-
-const _wishlistItems = [
-  _WishlistItem(
-    name: 'Oud Al Layl',
-    brand: 'MD Scents',
-    price: 'PKR 4,500',
-    imageUrl: 'https://picsum.photos/seed/perfume1/400/400',
-    rating: 4.8,
-  ),
-  _WishlistItem(
-    name: 'Rose Elixir',
-    brand: 'MD Scents',
-    price: 'PKR 3,200',
-    imageUrl: 'https://picsum.photos/seed/perfume2/400/400',
-    rating: 4.5,
-  ),
-  _WishlistItem(
-    name: 'Midnight Musk',
-    brand: 'MD Scents',
-    price: 'PKR 2,800',
-    imageUrl: 'https://picsum.photos/seed/perfume3/400/400',
-    rating: 4.6,
-  ),
-  _WishlistItem(
-    name: 'Amber Noir',
-    brand: 'MD Scents',
-    price: 'PKR 5,100',
-    imageUrl: 'https://picsum.photos/seed/perfume7/400/400',
-    rating: 4.9,
-  ),
-  _WishlistItem(
-    name: 'Cedar Wood',
-    brand: 'MD Scents',
-    price: 'PKR 3,600',
-    imageUrl: 'https://picsum.photos/seed/perfume4/400/400',
-    rating: 4.4,
-  ),
-];
-
-class _WishlistCard extends StatelessWidget {
-  final _WishlistItem item;
+class _WishlistCard extends GetView<WishlistController> {
+  final WishlistItem item;
 
   const _WishlistCard({required this.item});
 
@@ -130,7 +131,6 @@ class _WishlistCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Image
           ClipRRect(
             borderRadius:
                 const BorderRadius.horizontal(left: Radius.circular(16)),
@@ -148,7 +148,6 @@ class _WishlistCard extends StatelessWidget {
               ),
             ),
           ),
-          // Details
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -162,31 +161,18 @@ class _WishlistCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    item.brand,
+                    'MD Scents',
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textDark.withValues(alpha: 0.5),
                       fontSize: 12,
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded,
-                          color: AppColors.accent, size: 14),
-                      const SizedBox(width: 3),
-                      Text(
-                        item.rating.toString(),
-                        style: AppTextStyles.bodyMedium
-                            .copyWith(fontSize: 12),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        item.price,
+                        'PKR ${item.price.toStringAsFixed(0)}',
                         style: AppTextStyles.titleLarge.copyWith(
                           color: AppColors.primary,
                           fontSize: 14,
@@ -195,38 +181,42 @@ class _WishlistCard extends StatelessWidget {
                       Row(
                         children: [
                           GestureDetector(
-                            onTap: () => Get.snackbar(
-                              'Added to Cart',
-                              '${item.name} added to your cart.',
-                              snackPosition: SnackPosition.TOP,
-                              backgroundColor: AppColors.success,
-                              colorText: Colors.white,
-                              borderRadius: 12,
-                              margin: const EdgeInsets.all(12),
-                            ),
+                            onTap: () {
+                              controller.addToCart(item);
+                              Get.snackbar(
+                                'Added to Cart',
+                                '${item.name} added to your cart.',
+                                snackPosition: SnackPosition.TOP,
+                                backgroundColor: AppColors.success,
+                                colorText: Colors.white,
+                                borderRadius: 12,
+                                margin: const EdgeInsets.all(12),
+                              );
+                            },
                             child: Container(
                               padding: const EdgeInsets.all(7),
                               decoration: BoxDecoration(
                                 color: AppColors.primary,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(
-                                  Icons.shopping_bag_outlined,
-                                  color: Colors.white,
-                                  size: 16),
+                              child: const Icon(Icons.shopping_bag_outlined,
+                                  color: Colors.white, size: 16),
                             ),
                           ),
                           const SizedBox(width: 8),
                           GestureDetector(
-                            onTap: () => Get.snackbar(
-                              'Removed',
-                              '${item.name} removed from wishlist.',
-                              snackPosition: SnackPosition.TOP,
-                              backgroundColor: AppColors.primary,
-                              colorText: Colors.white,
-                              borderRadius: 12,
-                              margin: const EdgeInsets.all(12),
-                            ),
+                            onTap: () async {
+                              await controller.remove(item.productId);
+                              Get.snackbar(
+                                'Removed',
+                                '${item.name} removed from wishlist.',
+                                snackPosition: SnackPosition.TOP,
+                                backgroundColor: AppColors.primary,
+                                colorText: Colors.white,
+                                borderRadius: 12,
+                                margin: const EdgeInsets.all(12),
+                              );
+                            },
                             child: Container(
                               padding: const EdgeInsets.all(7),
                               decoration: BoxDecoration(

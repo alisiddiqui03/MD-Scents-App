@@ -16,6 +16,11 @@ class OrderConfirmView extends StatelessWidget {
     final total = args['total'] as String? ?? 'PKR 0';
     final isCod = args['isCod'] as bool? ?? true;
     final itemCount = args['itemCount'] as int? ?? 1;
+    final grossSubtotal = (args['grossSubtotal'] as num?)?.toDouble();
+    final productSavings = (args['productSavings'] as num?)?.toDouble();
+    final globalSavings = (args['globalSavings'] as num?)?.toDouble();
+    final showBreakdown = grossSubtotal != null &&
+        ((productSavings ?? 0) > 0.009 || (globalSavings ?? 0) > 0.009);
 
     return PopScope(
       canPop: false,
@@ -123,9 +128,37 @@ class OrderConfirmView extends StatelessWidget {
                       const SizedBox(height: 14),
                       Divider(height: 1, color: Colors.grey.shade100),
                       const SizedBox(height: 14),
+                      if (showBreakdown) ...[
+                        _BreakdownLine(
+                          label: 'Items (list price)',
+                          value:
+                              'PKR ${grossSubtotal.toStringAsFixed(0)}',
+                        ),
+                        if ((productSavings ?? 0) > 0.009) ...[
+                          const SizedBox(height: 8),
+                          _BreakdownLine(
+                            label: 'Product discounts',
+                            value:
+                                '− PKR ${productSavings!.toStringAsFixed(0)}',
+                            valueColor: AppColors.success,
+                          ),
+                        ],
+                        if ((globalSavings ?? 0) > 0.009) ...[
+                          const SizedBox(height: 8),
+                          _BreakdownLine(
+                            label: 'Store discount',
+                            value:
+                                '− PKR ${globalSavings!.toStringAsFixed(0)}',
+                            valueColor: AppColors.success,
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        Divider(height: 1, color: Colors.grey.shade100),
+                        const SizedBox(height: 10),
+                      ],
                       _InfoRow(
                         icon: Icons.receipt_long_outlined,
-                        label: 'Total',
+                        label: 'Total paid',
                         value: total,
                         valueColor: AppColors.primary,
                         bold: true,
@@ -240,6 +273,44 @@ class OrderConfirmView extends StatelessWidget {
 }
 
 // ── Helper widgets ─────────────────────────────────────────────────────────────
+
+class _BreakdownLine extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _BreakdownLine({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textDark.withValues(alpha: 0.55),
+              fontSize: 12,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: valueColor ?? AppColors.textDark,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;

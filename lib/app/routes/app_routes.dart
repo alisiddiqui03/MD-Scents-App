@@ -19,6 +19,7 @@ abstract class Routes {
   static const USER_WISHLIST = _Paths.USER_WISHLIST;
   static const USER_ADDRESSES = _Paths.USER_ADDRESSES;
   static const USER_ALL_PRODUCTS = _Paths.USER_ALL_PRODUCTS;
+  static const USER_FEATURED_PRODUCTS = _Paths.USER_FEATURED_PRODUCTS;
   static const USER_ORDER_CONFIRM = _Paths.USER_ORDER_CONFIRM;
 
   // Admin flow
@@ -49,6 +50,7 @@ abstract class _Paths {
   static const USER_WISHLIST = '/user/wishlist';
   static const USER_ADDRESSES = '/user/addresses';
   static const USER_ALL_PRODUCTS = '/user/all-products';
+  static const USER_FEATURED_PRODUCTS = '/user/featured-products';
   static const USER_ORDER_CONFIRM = '/user/order-confirm';
 
   // Admin flow

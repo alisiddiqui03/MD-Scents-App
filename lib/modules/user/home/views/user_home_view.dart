@@ -3,10 +3,13 @@ import 'package:get/get.dart';
 
 import '../controllers/user_home_controller.dart';
 import '../../user_base/controllers/user_base_controller.dart';
+import '../../cart/controllers/cart_controller.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/routes/app_pages.dart';
-import '../../../../app/services/auth_service.dart';
+import '../../../../app/data/models/product.dart';
+import '../../../../app/services/product_service.dart';
+import '../../../../app/widgets/discount_badge.dart';
 
 class UserHomeView extends StatelessWidget {
   const UserHomeView({super.key});
@@ -18,29 +21,34 @@ class UserHomeView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: _buildDrawer(context),
       appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeroBanner(ctrl),
-            const SizedBox(height: 20),
-            _buildCategories(ctrl),
-            const SizedBox(height: 24),
-            _buildSectionHeader('Latest Collection', onViewAll: () {
-              Get.toNamed(Routes.USER_ALL_PRODUCTS);
-            }),
-            const SizedBox(height: 12),
-            _buildLatestProductGrid(ctrl),
-            const SizedBox(height: 24),
-            _buildBoostDiscountBar(ctrl),
-            const SizedBox(height: 24),
-            _buildFeaturedSection(ctrl),
-            const SizedBox(height: 24),
-            _buildSpecialOffersSection(),
-            const SizedBox(height: 32),
-          ],
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () => ProductService.to.refreshCatalogFromServer(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeroBanner(ctrl),
+              const SizedBox(height: 20),
+              _buildSectionHeader(
+                'Latest Collection',
+                onViewAll: () {
+                  Get.toNamed(Routes.USER_ALL_PRODUCTS);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildLatestProductGrid(ctrl),
+              const SizedBox(height: 24),
+              _buildBoostDiscountBar(ctrl),
+              const SizedBox(height: 24),
+              _buildFeaturedSection(ctrl),
+              const SizedBox(height: 24),
+              _buildSpecialOffersSection(),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
@@ -52,12 +60,7 @@ class UserHomeView extends StatelessWidget {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      leading: Builder(
-        builder: (ctx) => IconButton(
-          icon: const Icon(Icons.menu_rounded, color: AppColors.textDark),
-          onPressed: () => Scaffold.of(ctx).openDrawer(),
-        ),
-      ),
+      leading: const SizedBox.shrink(),
       title: Text(
         'MD SCENTS',
         style: AppTextStyles.titleLarge.copyWith(
@@ -72,201 +75,42 @@ class UserHomeView extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             IconButton(
-              icon: const Icon(Icons.shopping_bag_outlined,
-                  color: AppColors.textDark),
-              onPressed: () => Get.toNamed(Routes.USER_CART),
+              icon: const Icon(
+                Icons.shopping_bag_outlined,
+                color: AppColors.textDark,
+              ),
+              onPressed: () => Get.find<UserBaseController>().onTabSelected(1),
             ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: const BoxDecoration(
-                  color: AppColors.danger,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    '2',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
+            Obx(() {
+              final count = Get.find<CartController>().totalQuantity;
+              if (count == 0) return const SizedBox.shrink();
+              return Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const BoxDecoration(
+                    color: AppColors.danger,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      count > 99 ? '99+' : '$count',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            }),
           ],
         ),
         const SizedBox(width: 4),
       ],
-    );
-  }
-
-  // ── Drawer ──────────────────────────────────────────────────────────────────
-
-  Widget _buildDrawer(BuildContext context) {
-    final user = AuthService.to.currentUser.value;
-
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primary, AppColors.secondary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    child: Text(
-                      (user?.displayName?.isNotEmpty == true
-                              ? user!.displayName![0]
-                              : 'U')
-                          .toUpperCase(),
-                      style: AppTextStyles.headlineMedium.copyWith(
-                        color: Colors.white,
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    user?.displayName ?? 'Guest User',
-                    style:
-                        AppTextStyles.titleLarge.copyWith(color: Colors.white),
-                  ),
-                  Text(
-                    user?.email ?? '',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: Colors.white.withValues(alpha: 0.75),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  _DrawerItem(
-                    icon: Icons.home_outlined,
-                    label: 'Home',
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  _DrawerItem(
-                    icon: Icons.shopping_bag_outlined,
-                    label: 'My Orders',
-                    badge: '3',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed(Routes.USER_ORDERS);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.favorite_border_rounded,
-                    label: 'Wishlist',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed(Routes.USER_WISHLIST);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.local_offer_outlined,
-                    label: 'Offers & Discounts',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed(Routes.USER_DISCOUNT);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.location_on_outlined,
-                    label: 'Delivery Addresses',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed(Routes.USER_ADDRESSES);
-                    },
-                  ),
-                  const Divider(height: 24, indent: 16, endIndent: 16),
-                  _DrawerItem(
-                    icon: Icons.person_outline,
-                    label: 'My Profile',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.find<UserBaseController>().onTabSelected(3);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.grid_view_rounded,
-                    label: 'All Products',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed(Routes.USER_ALL_PRODUCTS);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.help_outline_rounded,
-                    label: 'Help & Support',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.snackbar(
-                        'Help & Support',
-                        'Contact: support@mdscents.pk',
-                        snackPosition: SnackPosition.TOP,
-                        backgroundColor: AppColors.primary,
-                        colorText: Colors.white,
-                        borderRadius: 12,
-                        margin: const EdgeInsets.all(12),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: GestureDetector(
-                onTap: () async {
-                  Navigator.pop(context);
-                  await AuthService.to.signOut();
-                  Get.offAllNamed(Routes.AUTH);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.logout_rounded,
-                          color: AppColors.danger, size: 18),
-                      const SizedBox(width: 8),
-                      Text('Sign Out',
-                          style: AppTextStyles.bodyLarge
-                              .copyWith(color: AppColors.danger)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -280,10 +124,8 @@ class UserHomeView extends StatelessWidget {
           PageView.builder(
             itemCount: ctrl.banners.length,
             onPageChanged: ctrl.onBannerChanged,
-            itemBuilder: (_, index) => _BannerCard(
-              data: ctrl.banners[index],
-              index: index,
-            ),
+            itemBuilder: (_, index) =>
+                _BannerCard(data: ctrl.banners[index], index: index),
           ),
           Positioned(
             bottom: 12,
@@ -315,77 +157,9 @@ class UserHomeView extends StatelessWidget {
     );
   }
 
-  // ── Categories ──────────────────────────────────────────────────────────────
-
-  Widget _buildCategories(UserHomeController ctrl) {
-    return SizedBox(
-      height: 46,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: ctrl.categories.length,
-        itemBuilder: (_, i) {
-          final cat = ctrl.categories[i];
-          return Obx(
-            () {
-              final selected = ctrl.selectedCategoryIndex.value == i;
-              return GestureDetector(
-                onTap: () => ctrl.onCategorySelected(i),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: selected
-                          ? AppColors.primary
-                          : Colors.grey.shade200,
-                    ),
-                    boxShadow: selected
-                        ? [
-                            BoxShadow(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.25),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            )
-                          ]
-                        : [],
-                  ),
-                  child: Row(
-                    children: [
-                      Text(cat.emoji,
-                          style: const TextStyle(fontSize: 14)),
-                      const SizedBox(width: 6),
-                      Text(
-                        cat.label,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: selected
-                              ? Colors.white
-                              : AppColors.textDark,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
   // ── Section header ──────────────────────────────────────────────────────────
 
-  Widget _buildSectionHeader(String title,
-      {required VoidCallback onViewAll}) {
+  Widget _buildSectionHeader(String title, {required VoidCallback onViewAll}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -457,8 +231,10 @@ class UserHomeView extends StatelessWidget {
                 children: [
                   Text(
                     'Boost Discount',
-                    style: AppTextStyles.titleLarge
-                        .copyWith(color: Colors.white, fontSize: 16),
+                    style: AppTextStyles.titleLarge.copyWith(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -475,10 +251,10 @@ class UserHomeView extends StatelessWidget {
                       () => LinearProgressIndicator(
                         value: (ctrl.discountPercent.value - 5) / 15,
                         minHeight: 7,
-                        backgroundColor:
-                            Colors.white.withValues(alpha: 0.2),
+                        backgroundColor: Colors.white.withValues(alpha: 0.2),
                         valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.accent),
+                          AppColors.accent,
+                        ),
                       ),
                     ),
                   ),
@@ -516,7 +292,9 @@ class UserHomeView extends StatelessWidget {
                   onTap: () => Get.toNamed(Routes.USER_DISCOUNT),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.accent,
                       borderRadius: BorderRadius.circular(20),
@@ -542,32 +320,51 @@ class UserHomeView extends StatelessWidget {
   // ── Featured (horizontal scroll) ────────────────────────────────────────────
 
   Widget _buildFeaturedSection(UserHomeController ctrl) {
-    return Column(
-      children: [
-        _buildSectionHeader('Featured Picks', onViewAll: () {
-          Get.snackbar(
+    return Obx(() {
+      ProductService.to.productsVersion.value;
+      final list = ctrl.featuredProducts;
+      return Column(
+        children: [
+          _buildSectionHeader(
             'Featured Picks',
-            'Full catalogue coming soon.',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.primary,
-            colorText: Colors.white,
-            borderRadius: 12,
-            margin: const EdgeInsets.all(12),
-          );
-        }),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 220,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: ctrl.featuredProducts.length,
-            itemBuilder: (_, i) =>
-                _FeaturedCard(product: ctrl.featuredProducts[i]),
+            onViewAll: () {
+              Get.toNamed(Routes.USER_FEATURED_PRODUCTS);
+            },
           ),
-        ),
-      ],
-    );
+          const SizedBox(height: 12),
+          if (list.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Text(
+                  'No featured products',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textDark.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: list.length,
+                itemBuilder: (_, i) => _FeaturedCard(product: list[i]),
+              ),
+            ),
+        ],
+      );
+    });
   }
 
   // ── Special offers banner ───────────────────────────────────────────────────
@@ -612,49 +409,6 @@ class UserHomeView extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ── Drawer item ───────────────────────────────────────────────────────────────
-
-class _DrawerItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String? badge;
-  final VoidCallback onTap;
-
-  const _DrawerItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.badge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary, size: 22),
-      title: Text(label, style: AppTextStyles.bodyLarge),
-      trailing: badge != null
-          ? Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.danger,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                badge!,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: Colors.white,
-                  fontSize: 11,
-                ),
-              ),
-            )
-          : const Icon(Icons.chevron_right,
-              color: AppColors.textDark, size: 18),
-      onTap: onTap,
     );
   }
 }
@@ -738,7 +492,9 @@ class _BannerCard extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.accent.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(20),
@@ -769,7 +525,9 @@ class _BannerCard extends StatelessWidget {
                 const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 18, vertical: 9),
+                    horizontal: 18,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -800,6 +558,9 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectivePrice = ProductService.to.effectivePrice(product);
+    final hasDiscount = effectivePrice < product.price;
+    final discountLabel = ProductService.to.discountBadgeLabel(product);
     return GestureDetector(
       onTap: () => Get.toNamed(
         Routes.USER_PRODUCT_DETAIL,
@@ -825,53 +586,68 @@ class _ProductCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(14)),
+                      top: Radius.circular(14),
+                    ),
                     child: Image.network(
                       product.imageUrl,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      loadingBuilder: (_, child, progress) =>
-                          progress == null
-                              ? child
-                              : Container(
-                                  color: Colors.grey.shade100,
-                                  child: const Center(
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    ),
+                      loadingBuilder: (_, child, progress) => progress == null
+                          ? child
+                          : Container(
+                              color: Colors.grey.shade100,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
                                   ),
                                 ),
+                              ),
+                            ),
                       errorBuilder: (_, __, ___) => Container(
                         color: Colors.grey.shade100,
-                        child: const Icon(Icons.water_drop_rounded,
-                            color: Colors.grey, size: 32),
+                        child: const Icon(
+                          Icons.water_drop_rounded,
+                          color: Colors.grey,
+                          size: 32,
+                        ),
                       ),
                     ),
                   ),
-                  if (product.isNew)
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.success,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'NEW',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (product.isNew)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.success,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'NEW',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        if (discountLabel != null) ...[
+                          if (product.isNew) const SizedBox(height: 4),
+                          DiscountBadge(text: discountLabel),
+                        ],
+                      ],
                     ),
+                  ),
                 ],
               ),
             ),
@@ -894,7 +670,7 @@ class _ProductCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'PKR ${product.price.toStringAsFixed(0)}',
+                          'PKR ${effectivePrice.toStringAsFixed(0)}',
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w700,
@@ -902,9 +678,11 @@ class _ProductCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (product.oldPrice != null)
+                      if (hasDiscount || product.oldPrice != null)
                         Text(
-                          product.oldPrice!.toStringAsFixed(0),
+                          (product.oldPrice ?? product.price).toStringAsFixed(
+                            0,
+                          ),
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: Colors.grey,
                             fontSize: 9,
@@ -932,6 +710,8 @@ class _FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectivePrice = ProductService.to.effectivePrice(product);
+    final discountLabel = ProductService.to.discountBadgeLabel(product);
     return GestureDetector(
       onTap: () => Get.toNamed(
         Routes.USER_PRODUCT_DETAIL,
@@ -959,48 +739,64 @@ class _FeaturedCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16)),
+                      top: Radius.circular(16),
+                    ),
                     child: Image.network(
                       product.imageUrl,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      loadingBuilder: (_, child, progress) =>
-                          progress == null
-                              ? child
-                              : Container(
-                                  color: Colors.grey.shade100,
-                                  child: const Center(
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2)),
+                      loadingBuilder: (_, child, progress) => progress == null
+                          ? child
+                          : Container(
+                              color: Colors.grey.shade100,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                 ),
+                              ),
+                            ),
                       errorBuilder: (_, __, ___) => Container(
                         color: Colors.grey.shade100,
-                        child: const Icon(Icons.water_drop_rounded,
-                            color: Colors.grey, size: 40),
+                        child: const Icon(
+                          Icons.water_drop_rounded,
+                          color: Colors.grey,
+                          size: 40,
+                        ),
                       ),
                     ),
                   ),
-                  if (product.isNew)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'NEW',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (product.isNew)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'NEW',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        if (discountLabel != null) ...[
+                          if (product.isNew) const SizedBox(height: 4),
+                          DiscountBadge(text: discountLabel),
+                        ],
+                      ],
                     ),
+                  ),
                   Positioned(
                     top: 8,
                     right: 8,
@@ -1011,8 +807,11 @@ class _FeaturedCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.favorite_border,
-                          color: AppColors.danger, size: 16),
+                      child: const Icon(
+                        Icons.favorite_border,
+                        color: AppColors.danger,
+                        size: 16,
+                      ),
                     ),
                   ),
                 ],
@@ -1031,29 +830,12 @@ class _FeaturedCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'PKR ${product.price.toStringAsFixed(0)}',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.star_rounded,
-                              color: AppColors.accent, size: 13),
-                          const SizedBox(width: 2),
-                          Text(
-                            product.rating.toString(),
-                            style: AppTextStyles.bodyMedium
-                                .copyWith(fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ],
+                  Text(
+                    'PKR ${effectivePrice.toStringAsFixed(0)}',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -1108,13 +890,18 @@ class _OfferBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: AppTextStyles.bodyLarge
-                              .copyWith(fontWeight: FontWeight.w700)),
-                      Text(subtitle,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                              color:
-                                  AppColors.textDark.withValues(alpha: 0.6))),
+                      Text(
+                        title,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textDark.withValues(alpha: 0.9),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1133,15 +920,20 @@ class _OfferBanner extends StatelessWidget {
                   child: Icon(icon, color: color, size: 20),
                 ),
                 const SizedBox(height: 10),
-                Text(title,
-                    style: AppTextStyles.bodyLarge
-                        .copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(subtitle,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                        color:
-                            AppColors.textDark.withValues(alpha: 0.6),
-                        fontSize: 11)),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textDark.withValues(alpha: 0.9),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
     );
