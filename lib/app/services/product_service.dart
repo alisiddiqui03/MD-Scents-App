@@ -24,6 +24,18 @@ class ProductService extends GetxService {
   /// Products at or below this stock level count as "low stock" (admin alerts).
   final lowStockThreshold = 5.obs;
 
+  /// Offers screen: starting discount % (Firestore `discounts/store_config`).
+  final adBoostBasePercent = 5.0.obs;
+
+  /// Offers screen: max discount % after watching ads.
+  final adBoostMaxPercent = 20.0.obs;
+
+  /// Extra discount % per completed rewarded ad.
+  final adBoostPerWatchPercent = 0.25.obs;
+
+  /// When false, hide rewarded + banner ad UI (config still in Firestore).
+  final adsRewardEnabled = true.obs;
+
   final List<BannerData> _banners = const [
     BannerData(
       title: 'New Collection',
@@ -148,12 +160,28 @@ class ProductService extends GetxService {
     final doc = await FirestoreService.discountsCollection
         .doc('store_config')
         .get(const GetOptions(source: Source.server));
-    final data = doc.data();
-    final raw = (data?['globalDiscountPercent'] as num?)?.toDouble() ?? 0;
-    globalDiscountPercent.value = raw.clamp(0, 90).toDouble();
-    final rawLow = (data?['lowStockThreshold'] as num?)?.toInt() ?? 5;
-    lowStockThreshold.value = rawLow.clamp(1, 999);
+    _applyStoreConfig(doc.data());
     isDiscountLoading.value = false;
+  }
+
+  void _applyStoreConfig(Map<String, dynamic>? data) {
+    final d = data ?? <String, dynamic>{};
+    final raw = (d['globalDiscountPercent'] as num?)?.toDouble() ?? 0;
+    globalDiscountPercent.value = raw.clamp(0, 90).toDouble();
+    final rawLow = (d['lowStockThreshold'] as num?)?.toInt() ?? 5;
+    lowStockThreshold.value = rawLow.clamp(1, 999);
+
+    var base = (d['adBoostBasePercent'] as num?)?.toDouble() ?? 5;
+    var max = (d['adBoostMaxPercent'] as num?)?.toDouble() ?? 20;
+    final perWatch =
+        (d['adBoostPerWatchPercent'] as num?)?.toDouble() ?? 0.25;
+    final adsOn = d['adsRewardEnabled'] as bool? ?? true;
+    base = base.clamp(0, 90);
+    max = max.clamp(base, 90);
+    adBoostBasePercent.value = base;
+    adBoostMaxPercent.value = max;
+    adBoostPerWatchPercent.value = perWatch.clamp(0.05, 25);
+    adsRewardEnabled.value = adsOn;
   }
 
   Future<void> upsertProduct(ProductItem product) async {
@@ -171,11 +199,7 @@ class ProductService extends GetxService {
         .doc('store_config')
         .snapshots()
         .listen((doc) {
-      final data = doc.data();
-      final raw = (data?['globalDiscountPercent'] as num?)?.toDouble() ?? 0;
-      globalDiscountPercent.value = raw.clamp(0, 90).toDouble();
-      final rawLow = (data?['lowStockThreshold'] as num?)?.toInt() ?? 5;
-      lowStockThreshold.value = rawLow.clamp(1, 999);
+      _applyStoreConfig(doc.data());
       isDiscountLoading.value = false;
     });
   }
@@ -192,6 +216,35 @@ class ProductService extends GetxService {
     final safe = value.clamp(1, 999);
     await FirestoreService.discountsCollection.doc('store_config').set({
       'lowStockThreshold': safe,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Admin: rewarded-ad / offers discount behaviour (stored in `store_config`).
+  Future<void> setAdBoostConfig({
+    required double basePercent,
+    required double maxPercent,
+    required double perWatchPercent,
+    required bool adsEnabled,
+  }) async {
+    var b = basePercent.clamp(0, 90);
+    var m = maxPercent.clamp(0, 90);
+    if (m < b) m = b;
+    final pw = perWatchPercent.clamp(0.05, 25);
+    await FirestoreService.discountsCollection.doc('store_config').set({
+      'adBoostBasePercent': b,
+      'adBoostMaxPercent': m,
+      'adBoostPerWatchPercent': pw,
+      'adsRewardEnabled': adsEnabled,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Admin convenience for the new fixed discount progression flow.
+  /// Keeps historical fields intact while only toggling ads availability.
+  Future<void> setAdsRewardEnabled(bool enabled) async {
+    await FirestoreService.discountsCollection.doc('store_config').set({
+      'adsRewardEnabled': enabled,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

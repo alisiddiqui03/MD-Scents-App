@@ -49,5 +49,7 @@
 	<string>MD Scents needs photo access to upload product images.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MD Scents needs camera access to capture product images.</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3221693773631079~2676327540</string>
 </dict>
 </plist>

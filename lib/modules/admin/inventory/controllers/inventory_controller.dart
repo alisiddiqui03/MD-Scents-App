@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../app/data/models/product.dart';
+import '../../../../app/services/firestore_service.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/utils/admin_snackbar.dart';
 
@@ -9,10 +13,8 @@ class InventoryController extends GetxController {
   final ProductService _productService = ProductService.to;
 
   final items = <ProductItem>[].obs;
-  final adBasePercent = 5.0.obs;
-  final adMaxPercent = 20.0.obs;
-  final adPerAdBoost = 1.0.obs;
-  final adsEnabled = true.obs;
+  final userDiscountRows = <UserDiscountRow>[].obs;
+  final isUserDiscountsLoading = true.obs;
 
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
@@ -21,6 +23,7 @@ class InventoryController extends GetxController {
   final isDeleting = false.obs;
 
   late final Worker _productsWorker;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSub;
 
   @override
   void onInit() {
@@ -30,6 +33,7 @@ class InventoryController extends GetxController {
       _productService.productsVersion,
       (_) => _loadInventory(),
     );
+    _bindUserDiscountMonitor();
     searchController.addListener(() {
       searchQuery.value = searchController.text;
     });
@@ -37,6 +41,7 @@ class InventoryController extends GetxController {
 
   @override
   void onClose() {
+    _usersSub?.cancel();
     searchController.dispose();
     _productsWorker.dispose();
     super.onClose();
@@ -85,6 +90,63 @@ class InventoryController extends GetxController {
   void refreshFromService() {
     _loadInventory();
   }
+
+  /// Kept for view compatibility (no configurable ad sliders anymore).
+  void syncAdConfigFromProductService() {}
+
+  void _bindUserDiscountMonitor() {
+    isUserDiscountsLoading.value = true;
+    _usersSub?.cancel();
+    _usersSub = FirestoreService.usersCollection
+        .where('role', isEqualTo: 'user')
+        .snapshots()
+        .listen((snapshot) {
+      final rows = snapshot.docs.map((doc) {
+        final d = doc.data();
+        final discount = (d['currentDiscountPercent'] as num?)?.toDouble() ?? 0;
+        final adsWatched = (d['adsWatchedCount'] as num?)?.toInt() ?? 0;
+        final received = d['hasReceivedWelcomeDiscount'] as bool? ?? false;
+        final used = d['hasUsedWelcomeDiscount'] as bool? ?? false;
+        return UserDiscountRow(
+          uid: doc.id,
+          name: (d['displayName'] as String?)?.trim().isNotEmpty == true
+              ? (d['displayName'] as String).trim()
+              : ((d['email'] as String?)?.trim().isNotEmpty == true
+                  ? (d['email'] as String).trim()
+                  : doc.id),
+          currentDiscountPercent: discount.clamp(0, 20).toDouble(),
+          adsWatchedCount: adsWatched < 0 ? 0 : adsWatched,
+          hasReceivedWelcomeDiscount: received,
+          hasUsedWelcomeDiscount: used,
+        );
+      }).toList()
+        ..sort(
+          (a, b) => b.currentDiscountPercent.compareTo(a.currentDiscountPercent),
+        );
+      userDiscountRows.assignAll(rows);
+      isUserDiscountsLoading.value = false;
+    }, onError: (_) {
+      isUserDiscountsLoading.value = false;
+    });
+  }
+}
+
+class UserDiscountRow {
+  const UserDiscountRow({
+    required this.uid,
+    required this.name,
+    required this.currentDiscountPercent,
+    required this.adsWatchedCount,
+    required this.hasReceivedWelcomeDiscount,
+    required this.hasUsedWelcomeDiscount,
+  });
+
+  final String uid;
+  final String name;
+  final double currentDiscountPercent;
+  final int adsWatchedCount;
+  final bool hasReceivedWelcomeDiscount;
+  final bool hasUsedWelcomeDiscount;
 }
 
 /// New uploads use ids like `p-<millisecondsSinceEpoch>` — sort those newest-first.

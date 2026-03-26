@@ -1,14 +1,16 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/services/firestore_service.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/services/auth_service.dart';
 import '../../../../app/services/cloudinary_service.dart';
-import '../../../../app/services/order_service.dart';
+import '../../../../app/services/discount_service.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/data/models/order.dart';
 import '../../../../app/data/models/product.dart';
@@ -43,6 +45,7 @@ class CartController extends GetxController {
   final items = <CartItem>[].obs;
   final CloudinaryService _cloudinaryService = CloudinaryService();
   final ProductService _productService = ProductService.to;
+  final DiscountService _discountService = DiscountService.to;
   final ImagePicker _picker = ImagePicker();
 
   late final Worker _priceSyncGlobal;
@@ -81,7 +84,12 @@ class CartController extends GetxController {
   double get subtotal =>
       items.fold(0, (sum, item) => sum + item.unitPrice * item.qty.value);
 
-  double get total => subtotal;
+  double get userDiscountPercent =>
+      _discountService.currentDiscountPercent.value.clamp(0, 20).toDouble();
+
+  double get userDiscountAmount => subtotal * (userDiscountPercent / 100);
+
+  double get total => (subtotal - userDiscountAmount).clamp(0, double.infinity);
 
   /// Sum of list prices × qty (before any discount).
   double get invoiceGrossSubtotal {
@@ -123,10 +131,43 @@ class CartController extends GetxController {
       items.fold(0, (sum, item) => sum + item.qty.value);
 
   void addToCart(ProductItem product, {int qty = 1}) {
-    final existing =
-        items.firstWhereOrNull((i) => i.id == product.id);
+    if (qty < 1) return;
+
+    final cap = product.stock;
+    if (cap <= 0) {
+      Get.snackbar(
+        'Out of stock',
+        '${product.name} is not available.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    final existing = items.firstWhereOrNull((i) => i.id == product.id);
+    final inCart = existing?.qty.value ?? 0;
+    final room = cap - inCart;
+    if (room <= 0) {
+      Get.snackbar(
+        'Stock limit',
+        'You already have the maximum ($cap) for ${product.name}.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    final add = qty > room ? room : qty;
     if (existing != null) {
-      existing.qty.value += qty;
+      existing.qty.value += add;
     } else {
       items.add(
         CartItem(
@@ -134,26 +175,57 @@ class CartController extends GetxController {
           name: product.name,
           unitPrice: _productService.effectivePrice(product),
           imageUrl: product.imageUrl,
-          initialQty: qty,
+          initialQty: add,
         ),
       );
     }
-    Get.snackbar(
-      '🛍 Added to Cart',
-      '${product.name} × $qty added successfully.',
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: AppColors.success,
-      colorText: Colors.white,
-      borderRadius: 12,
-      margin: const EdgeInsets.all(12),
-      duration: const Duration(seconds: 2),
-      icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-    );
+
+    if (add < qty) {
+      Get.snackbar(
+        'Limited stock',
+        'Only $add of ${product.name} added ($cap in stock).',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
+        icon: const Icon(Icons.info_outline, color: Colors.white),
+      );
+    } else {
+      Get.snackbar(
+        '🛍 Added to Cart',
+        '${product.name} × $add added successfully.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.success,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 2),
+        icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+      );
+    }
   }
 
   void incrementQty(String id) {
     final item = items.firstWhereOrNull((i) => i.id == id);
-    if (item != null) item.qty.value++;
+    if (item == null) return;
+    final p = _productService.findById(id);
+    if (p == null) return;
+    final cap = p.stock;
+    if (item.qty.value >= cap) {
+      Get.snackbar(
+        'Stock limit',
+        'Maximum available is $cap.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+      );
+      return;
+    }
+    item.qty.value++;
   }
 
   void decrementQty(String id) {
@@ -249,6 +321,7 @@ class CartController extends GetxController {
       final grossBeforeOrder = invoiceGrossSubtotal;
       final prodSavBeforeOrder = invoiceProductSavingsTotal;
       final globalSavBeforeOrder = invoiceGlobalSavingsTotal;
+      final userSavBeforeOrder = userDiscountAmount;
 
       final orderItems = items
           .map((i) => OrderItem(
@@ -265,8 +338,11 @@ class CartController extends GetxController {
       // Bank: receipt uploaded → isPaid true (payment proof received).
       final isPaid = !isCod && receipt.isNotEmpty;
 
+      final orderRef =
+          FirestoreService.usersOrdersRef(user.uid).doc();
+
       final order = Order(
-        id: '',
+        id: orderRef.id,
         userId: user.uid,
         customerName: user.displayName ?? user.email ?? 'Customer',
         customerEmail: user.email ?? '',
@@ -279,7 +355,35 @@ class CartController extends GetxController {
         items: orderItems,
       );
 
-      final orderId = await OrderService.to.createOrder(order);
+      await FirestoreService.instance.runTransaction((txn) async {
+        for (final item in items) {
+          final pref = FirestoreService.productsCollection.doc(item.id);
+          final snap = await txn.get(pref);
+          if (!snap.exists) {
+            throw StateError(
+              'Product "${item.name}" is no longer available.',
+            );
+          }
+          final stock = (snap.data()?['stock'] as num?)?.toInt() ?? 0;
+          if (stock < item.qty.value) {
+            throw StateError(
+              'Not enough stock for "${item.name}". Only $stock left.',
+            );
+          }
+        }
+        for (final item in items) {
+          txn.update(
+            FirestoreService.productsCollection.doc(item.id),
+            {'stock': FieldValue.increment(-item.qty.value)},
+          );
+        }
+        txn.set(orderRef, order.toMap());
+      });
+
+      final orderId = orderRef.id;
+
+      // Any active discount is considered consumed on successful purchase.
+      await _discountService.consumeDiscountOnPurchaseIfAny();
 
       // Clear cart
       items.clear();
@@ -302,12 +406,16 @@ class CartController extends GetxController {
           'grossSubtotal': grossBeforeOrder,
           'productSavings': prodSavBeforeOrder,
           'globalSavings': globalSavBeforeOrder,
+          'userSavings': userSavBeforeOrder,
         },
       );
     } catch (e, st) {
+      final message = e is StateError
+          ? e.message
+          : 'Could not place order. Please try again.';
       Get.snackbar(
         'Order Failed',
-        'Could not place order. Please try again.',
+        message,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.danger,
         colorText: Colors.white,

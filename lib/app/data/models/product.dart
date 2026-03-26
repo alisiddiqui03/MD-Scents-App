@@ -63,7 +63,7 @@ class ProductItem {
       rating: (data['rating'] as num?)?.toDouble() ?? 4.5,
       isNew: data['isNew'] as bool? ?? false,
       isFeatured: data['isFeatured'] as bool? ?? false,
-      stock: data['stock'] as int? ?? 0,
+      stock: (data['stock'] as num?)?.toInt() ?? 0,
       isActive: data['isActive'] as bool? ?? true,
       category: data['category'] as String?,
       discountPercent: (data['discountPercent'] as num?)?.toDouble() ?? 0,

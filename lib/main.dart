@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
@@ -9,12 +10,15 @@ import 'app/services/auth_service.dart';
 import 'app/services/product_service.dart';
 import 'app/services/order_service.dart';
 import 'app/services/ad_service.dart';
+import 'app/services/discount_service.dart';
 import 'app/services/wishlist_service.dart';
 import 'app/services/review_service.dart';
 import 'app/services/address_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await GetStorage.init();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -29,6 +33,7 @@ Future<void> main() async {
   Get.put<ReviewService>(ReviewService());
   Get.put<AddressService>(AddressService());
   await Get.putAsync<AuthService>(() async => AuthService().init());
+  Get.put<DiscountService>(DiscountService());
 
   runApp(const MdScentsApp());
 }

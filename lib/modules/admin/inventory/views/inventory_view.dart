@@ -102,6 +102,8 @@ class InventoryView extends GetView<InventoryController> {
                   _SearchBar(controller: controller),
                   const SizedBox(height: 12),
                   _AdminDiscountCard(),
+                  const SizedBox(height: 12),
+                  _AdminUserDiscountMonitor(controller: controller),
                   const SizedBox(height: 16),
                   Text(
                     'Total stock: ${controller.totalItems}'
@@ -224,96 +226,70 @@ class _SearchBar extends StatelessWidget {
 class _AdminDiscountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return GetX<InventoryController>(
-      builder: (c) {
-        final base = c.adBasePercent.value;
-        final max = c.adMaxPercent.value;
-        final progress = (base - 5) / (max - 5).clamp(1, 100);
-
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1F2A44), Color(0xFF8B5CF6)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final c = Get.find<InventoryController>();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1F2A44), Color(0xFF8B5CF6)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Ads & Discount',
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Switch(
-                    value: c.adsEnabled.value,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: Colors.white.withValues(alpha: 0.45),
-                    onChanged: (v) => c.adsEnabled.value = v,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
               Text(
-                'Base discount: ${base.toStringAsFixed(0)}% • Max with ads: ${max.toStringAsFixed(0)}%',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: Colors.white.withValues(alpha: 0.85),
-                  fontSize: 12,
+                'Ads & Discount',
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 14),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: progress.clamp(0.0, 1.0),
-                  minHeight: 8,
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.accent,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: ['5%', '10%', '15%', '20%']
-                    .map(
-                      (t) => Text(
-                        t,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 10,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => _showAdsConfigSheet(c),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  child: const Text('Manage ads flow'),
-                ),
+              Icon(
+                Icons.info_outline_rounded,
+                color: Colors.white.withValues(alpha: 0.85),
+                size: 18,
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 4),
+          Text(
+            'Welcome discount is fixed at 5%. Ad progression is fixed up to 20%.',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '0-5: 1 ad/+1%  •  5-10: 2 ads/+1%  •  10-15: 4 ads/+1%  •  15-20: 8 ads/+1%',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => _showAdsConfigSheet(c),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text('View flow details'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   void _showAdsConfigSheet(InventoryController c) {
+    c.syncAdConfigFromProductService();
     Get.bottomSheet(
       Container(
         decoration: const BoxDecoration(
@@ -339,74 +315,199 @@ class _AdminDiscountCard extends StatelessWidget {
             Text('Ads discount flow', style: AppTextStyles.titleLarge),
             const SizedBox(height: 4),
             Text(
-              'Configure how much extra discount a user can unlock by watching rewarded ads.',
+              'User discount progression now follows fixed rules. You can enable or disable ad rewards below.',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textDark.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
             ),
             const SizedBox(height: 16),
-            Obx(
-              () => Column(
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('Welcome discount', style: AppTextStyles.bodyLarge),
+                  const SizedBox(height: 4),
                   Text(
-                    'Base discount: ${c.adBasePercent.value.toStringAsFixed(0)}%',
-                    style: AppTextStyles.bodyMedium,
+                    '• First-time user gets 5% once\n'
+                    '• User must use this 5% before ad boosts start',
+                    style: AppTextStyles.bodyMedium.copyWith(fontSize: 12),
                   ),
-                  Slider(
-                    value: c.adBasePercent.value,
-                    min: 5,
-                    max: 20,
-                    divisions: 3,
-                    label: '${c.adBasePercent.value.toStringAsFixed(0)}%',
-                    onChanged: (v) => c.adBasePercent.value = v,
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
+                  Text('Ad progression (fixed)', style: AppTextStyles.bodyLarge),
+                  const SizedBox(height: 4),
                   Text(
-                    'Max discount with ads: ${c.adMaxPercent.value.toStringAsFixed(0)}%',
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  Slider(
-                    value: c.adMaxPercent.value,
-                    min: 10,
-                    max: 25,
-                    divisions: 3,
-                    label: '${c.adMaxPercent.value.toStringAsFixed(0)}%',
-                    onChanged: (v) => c.adMaxPercent.value = v,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Extra per ad watched: +${c.adPerAdBoost.value.toStringAsFixed(0)}%',
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  Slider(
-                    value: c.adPerAdBoost.value,
-                    min: 1,
-                    max: 5,
-                    divisions: 4,
-                    label: '+${c.adPerAdBoost.value.toStringAsFixed(0)}%',
-                    onChanged: (v) => c.adPerAdBoost.value = v,
+                    '• 0% → 5%: +1% per 1 ad\n'
+                    '• 5% → 10%: +1% per 2 ads\n'
+                    '• 10% → 15%: +1% per 4 ads\n'
+                    '• 15% → 20%: +1% per 8 ads',
+                    style: AppTextStyles.bodyMedium.copyWith(fontSize: 12),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'Note: This is mock config. Later it will be tied\nto Firebase + AdMob for real rewarded ads.',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textDark.withValues(alpha: 0.6),
-                  fontSize: 11,
-                ),
-                textAlign: TextAlign.right,
+            Text(
+              'This flow is now fixed by app logic and user-level Firebase fields.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textDark.withValues(alpha: 0.55),
+                fontSize: 11,
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _AdminUserDiscountMonitor extends StatelessWidget {
+  const _AdminUserDiscountMonitor({required this.controller});
+
+  final InventoryController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      if (controller.isUserDiscountsLoading.value) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Loading user discount monitor...',
+                style: AppTextStyles.bodyMedium,
+              ),
+            ],
+          ),
+        );
+      }
+
+      final rows = controller.userDiscountRows.take(8).toList();
+      if (rows.isEmpty) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Text(
+            'No user discount data yet.',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textDark.withValues(alpha: 0.6),
+            ),
+          ),
+        );
+      }
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('User Discount Monitor', style: AppTextStyles.bodyLarge),
+            const SizedBox(height: 2),
+            Text(
+              'Top users by current discount',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textDark.withValues(alpha: 0.55),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...rows.map(
+              (u) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        u.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${u.currentDiscountPercent.toStringAsFixed(0)}%',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Ads: ${u.adsWatchedCount}',
+                      style: AppTextStyles.bodyMedium.copyWith(fontSize: 11),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (!u.hasUsedWelcomeDiscount &&
+                                u.hasReceivedWelcomeDiscount)
+                            ? AppColors.accent.withValues(alpha: 0.15)
+                            : AppColors.success.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        (!u.hasUsedWelcomeDiscount &&
+                                u.hasReceivedWelcomeDiscount)
+                            ? 'Welcome'
+                            : 'Ad mode',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 

@@ -5,6 +5,7 @@ import '../controllers/cart_controller.dart';
 import '../../user_base/controllers/user_base_controller.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../app/services/discount_service.dart';
 import '../../../../app/services/product_service.dart';
 
 class CartView extends GetView<CartController> {
@@ -292,10 +293,13 @@ class CartView extends GetView<CartController> {
       // Rebuild when cart or store discounts change
       ProductService.to.globalDiscountPercent.value;
       ProductService.to.productsVersion.value;
+      DiscountService.to.currentDiscountPercent.value;
       final gross = controller.invoiceGrossSubtotal;
       final prodSav = controller.invoiceProductSavingsTotal;
       final globSav = controller.invoiceGlobalSavingsTotal;
-      final hasSplit = prodSav > 0.009 || globSav > 0.009;
+      final userSav = controller.userDiscountAmount;
+      final userPct = controller.userDiscountPercent;
+      final hasSplit = prodSav > 0.009 || globSav > 0.009 || userSav > 0.009;
 
       return Container(
         padding: const EdgeInsets.all(16),
@@ -337,6 +341,13 @@ class CartView extends GetView<CartController> {
                 _SummaryDiscountRow(
                   label: 'Store discount',
                   value: globSav,
+                ),
+              ],
+              if (userSav > 0.009) ...[
+                const SizedBox(height: 8),
+                _SummaryDiscountRow(
+                  label: 'Your discount (${userPct.toStringAsFixed(0)}%)',
+                  value: userSav,
                 ),
               ],
               const Divider(height: 20),

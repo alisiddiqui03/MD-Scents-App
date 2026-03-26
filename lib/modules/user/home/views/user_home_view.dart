@@ -249,7 +249,7 @@ class UserHomeView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     child: Obx(
                       () => LinearProgressIndicator(
-                        value: (ctrl.discountPercent.value - 5) / 15,
+                        value: (ctrl.discountPercent.value / 20).clamp(0.0, 1.0),
                         minHeight: 7,
                         backgroundColor: Colors.white.withValues(alpha: 0.2),
                         valueColor: const AlwaysStoppedAnimation<Color>(
@@ -261,7 +261,7 @@ class UserHomeView extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: ['5%', '10%', '15%', '20%']
+                  children: ['0%', '5%', '10%', '20%']
                         .map(
                           (t) => Text(
                             t,
@@ -289,7 +289,7 @@ class UserHomeView extends StatelessWidget {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => Get.toNamed(Routes.USER_DISCOUNT),
+                  onTap: () => Get.find<UserBaseController>().onTabSelected(2),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,

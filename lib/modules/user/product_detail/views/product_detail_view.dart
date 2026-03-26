@@ -14,52 +14,57 @@ class ProductDetailView extends GetView<ProductDetailController> {
 
   @override
   Widget build(BuildContext context) {
-    final product = controller.product;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildImageSection(),
+        child: Obx(() {
+          ProductService.to.productsVersion.value;
+          final product = controller.product;
 
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTitleRow(product.name),
-                    const SizedBox(height: 12),
-                    Text('Description',
-                        style: AppTextStyles.titleLarge.copyWith(fontSize: 16)),
-                    const SizedBox(height: 8),
-                    Text(
-                      (product.description != null &&
-                              product.description!.trim().isNotEmpty)
-                          ? product.description!.trim()
-                          : 'No description added for this product yet.',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textDark.withValues(alpha: 0.65),
-                        height: 1.6,
+          return Column(
+            children: [
+              _buildImageSection(),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTitleRow(product.name),
+                      const SizedBox(height: 12),
+                      Text('Description',
+                          style:
+                              AppTextStyles.titleLarge.copyWith(fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Text(
+                        (product.description != null &&
+                                product.description!.trim().isNotEmpty)
+                            ? product.description!.trim()
+                            : 'No description added for this product yet.',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textDark.withValues(alpha: 0.65),
+                          height: 1.6,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildPriceStockRow(
-                      ProductService.to.effectivePrice(product),
-                      product.oldPrice,
-                      product.price,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildQuantityRow(),
-                  ],
+                      const SizedBox(height: 20),
+                      _buildPriceStockRow(
+                        ProductService.to.effectivePrice(product),
+                        product.oldPrice,
+                        product.price,
+                        product.stock,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildQuantityRow(),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            _buildBottomBar(),
-          ],
-        ),
+              _buildBottomBar(),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -371,8 +376,14 @@ class ProductDetailView extends GetView<ProductDetailController> {
     );
   }
 
-  Widget _buildPriceStockRow(double price, double? oldPrice, double basePrice) {
+  Widget _buildPriceStockRow(
+    double price,
+    double? oldPrice,
+    double basePrice,
+    int stock,
+  ) {
     final hasDiscount = price < basePrice;
+    final out = stock <= 0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -399,13 +410,14 @@ class ProductDetailView extends GetView<ProductDetailController> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.1),
+            color: (out ? AppColors.danger : AppColors.success)
+                .withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            'Stock: ${controller.product.stock}',
+            out ? 'Out of stock' : 'Stock: $stock',
             style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.success,
+              color: out ? AppColors.danger : AppColors.success,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -420,26 +432,32 @@ class ProductDetailView extends GetView<ProductDetailController> {
         Text('Quantity:', style: AppTextStyles.bodyLarge),
         const Spacer(),
         Obx(
-          () => Row(
-            children: [
-              _QtyButton(
-                icon: Icons.remove,
-                onTap: controller.decrement,
-              ),
-              Container(
-                width: 44,
-                alignment: Alignment.center,
-                child: Text(
-                  '${controller.quantity.value}',
-                  style: AppTextStyles.titleLarge.copyWith(fontSize: 18),
+          () {
+            final stock = controller.product.stock;
+            final q = controller.quantity.value;
+            final atMax = stock > 0 && q >= stock;
+            final atMin = q <= 1;
+            return Row(
+              children: [
+                _QtyButton(
+                  icon: Icons.remove,
+                  onTap: atMin ? null : controller.decrement,
                 ),
-              ),
-              _QtyButton(
-                icon: Icons.add,
-                onTap: controller.increment,
-              ),
-            ],
-          ),
+                Container(
+                  width: 44,
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$q',
+                    style: AppTextStyles.titleLarge.copyWith(fontSize: 18),
+                  ),
+                ),
+                _QtyButton(
+                  icon: Icons.add,
+                  onTap: (stock <= 0 || atMax) ? null : controller.increment,
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -511,39 +529,58 @@ class ProductDetailView extends GetView<ProductDetailController> {
           }),
           const SizedBox(width: 14),
           Expanded(
-            child: GestureDetector(
-              onTap: controller.addToCart,
-              child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.secondary, AppColors.primary],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+            child: Obx(() {
+              ProductService.to.productsVersion.value;
+              final stock = controller.product.stock;
+              final canAdd = stock > 0 &&
+                  controller.quantity.value >= 1 &&
+                  controller.quantity.value <= stock;
+              return GestureDetector(
+                onTap: canAdd ? controller.addToCart : null,
+                child: Container(
+                  height: 54,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: canAdd
+                          ? const [AppColors.secondary, AppColors.primary]
+                          : [
+                              Colors.grey.shade400,
+                              Colors.grey.shade500,
+                            ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: canAdd
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ]
+                        : null,
                   ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.shopping_bag_outlined,
+                        color: Colors.white.withValues(alpha: canAdd ? 1 : 0.85),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        stock <= 0 ? 'Unavailable' : 'Add to Cart',
+                        style: AppTextStyles.buttonText.copyWith(
+                          color: Colors.white.withValues(alpha: canAdd ? 1 : 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.shopping_bag_outlined,
-                        color: Colors.white, size: 20),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Add to Cart',
-                      style: AppTextStyles.buttonText,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+              );
+            }),
           ),
         ],
       ),
@@ -713,22 +750,26 @@ class _ProductImageFullscreenViewerState
 
 class _QtyButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _QtyButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.35,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 18),
         ),
-        child: Icon(icon, color: AppColors.primary, size: 18),
       ),
     );
   }

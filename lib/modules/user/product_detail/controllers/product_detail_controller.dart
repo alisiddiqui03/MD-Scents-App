@@ -13,29 +13,56 @@ import '../../cart/controllers/cart_controller.dart';
 
 class ProductDetailController extends GetxController {
   final quantity = 1.obs;
-  late final ProductItem product;
+  late final String _productId;
+  late final ProductItem _fallbackProduct;
+
+  /// Always resolved from [ProductService] so stock matches Firebase.
+  ProductItem get product =>
+      ProductService.to.findById(_productId) ?? _fallbackProduct;
+
   late final PageController imagePageController;
   final currentImageIndex = 0.obs;
   final isWishlisted = false.obs;
   final wishlistCount = 0.obs;
   StreamSubscription<bool>? _wishlistedSub;
   StreamSubscription<int>? _wishlistCountSub;
+  late final Worker _stockSyncWorker;
 
   @override
   void onInit() {
     super.onInit();
     final args = Get.arguments as Map<String, dynamic>?;
     final id = args?['id'] as String? ?? '1';
-
-    product = ProductService.to.findById(id) ??
+    _productId = id;
+    _fallbackProduct = ProductService.to.findById(id) ??
         ProductService.to.latestProducts.first;
 
     imagePageController = PageController();
+
+    _stockSyncWorker = ever<int>(
+      ProductService.to.productsVersion,
+      (_) => _syncQuantityToStock(),
+    );
+    quantity.value = 1;
+    _syncQuantityToStock();
 
     _bindWishlist(AuthService.to.currentUser.value?.uid);
     ever<AppUser?>(AuthService.to.currentUser, (user) {
       _bindWishlist(user?.uid);
     });
+  }
+
+  void _syncQuantityToStock() {
+    final s = product.stock;
+    if (s <= 0) {
+      quantity.value = 0;
+      return;
+    }
+    if (quantity.value > s) {
+      quantity.value = s;
+    } else if (quantity.value < 1) {
+      quantity.value = 1;
+    }
   }
 
   void _bindWishlist(String? uid) {
@@ -59,7 +86,9 @@ class ProductDetailController extends GetxController {
   }
 
   void increment() {
-    if (quantity.value < 20) quantity.value++;
+    final cap = product.stock;
+    if (cap <= 0) return;
+    if (quantity.value < cap) quantity.value++;
   }
 
   void decrement() {
@@ -79,8 +108,30 @@ class ProductDetailController extends GetxController {
   }
 
   void addToCart() {
+    final p = product;
+    if (p.stock <= 0) {
+      Get.snackbar(
+        'Out of stock',
+        '${p.name} is not available right now.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    if (quantity.value < 1 || quantity.value > p.stock) {
+      _syncQuantityToStock();
+      Get.snackbar(
+        'Adjust quantity',
+        'Choose between 1 and ${p.stock} for this product.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+      );
+      return;
+    }
     final cart = Get.find<CartController>();
-    cart.addToCart(product, qty: quantity.value);
+    cart.addToCart(p, qty: quantity.value);
   }
 
   Future<void> toggleWishlist() async {
@@ -118,6 +169,7 @@ class ProductDetailController extends GetxController {
 
   @override
   void onClose() {
+    _stockSyncWorker.dispose();
     imagePageController.dispose();
     _wishlistedSub?.cancel();
     _wishlistCountSub?.cancel();
