@@ -202,7 +202,6 @@ class DiscountView extends GetView<DiscountController> {
             final pct = controller.currentDiscount.value;
             final range = (max - min).abs() < 0.001 ? 1.0 : (max - min);
             final progress = ((pct - min) / range).clamp(0.0, 1.0);
-            final welcomeActive = ds.isWelcomeDiscountActive;
             final need = ds.adsNeededForNextPercent;
             final watched = ds.adsWatchedCount.value;
             return Column(
@@ -238,11 +237,9 @@ class DiscountView extends GetView<DiscountController> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  welcomeActive
-                      ? 'You currently have a 5% welcome discount. Use it first, then ad boosts will start.'
-                      : (pct >= max
-                          ? 'You reached max discount.'
-                          : 'Watch ads to increase discount. Progress: $watched of $need ads for your next +1%.'),
+                  pct >= max
+                      ? 'You reached the maximum discount of ${max.toStringAsFixed(0)}%.'
+                      : 'You have ${pct.toStringAsFixed(0)}% off. Watch ads to boost this further (progress: $watched/$need ads to next +1%).',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textDark.withValues(alpha: 0.55),
                     fontSize: 11,

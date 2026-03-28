@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../app/services/auth_service.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/utils/auth_error_messages.dart';
 
 enum AuthTab { login, register, forgot }
 
@@ -76,9 +77,9 @@ class AuthController extends GetxController {
         Get.offAllNamed(Routes.USER_BASE);
       }
     } on FirebaseAuthException catch (e) {
-      _snack('Sign In Failed', e.message ?? e.code);
+      _snack('Sign In Failed', userFacingAuthError(e));
     } catch (e) {
-      _snack('Sign In Failed', e.toString().replaceFirst('Exception: ', ''));
+      _snack('Sign In Failed', userFacingAuthError(e));
     } finally {
       isLoading.value = false;
     }
@@ -117,9 +118,9 @@ class AuthController extends GetxController {
       );
       Get.offAllNamed(Routes.USER_BASE);
     } on FirebaseAuthException catch (e) {
-      _snack('Sign Up Failed', e.message ?? e.code);
+      _snack('Sign Up Failed', userFacingAuthError(e));
     } catch (e) {
-      _snack('Sign Up Failed', e.toString().replaceFirst('Exception: ', ''));
+      _snack('Sign Up Failed', userFacingAuthError(e));
     } finally {
       isLoading.value = false;
     }
@@ -150,13 +151,9 @@ class AuthController extends GetxController {
       );
       setTab(AuthTab.login);
     } on FirebaseAuthException catch (e) {
-      _snack(
-        'Could not send reset email',
-        _resetEmailMessage(e),
-      );
+      _snack('Could not send reset email', _resetEmailMessage(e));
     } catch (e) {
-      _snack('Could not send reset email',
-          e.toString().replaceFirst('Exception: ', ''));
+      _snack('Could not send reset email', userFacingAuthError(e));
     } finally {
       isLoading.value = false;
     }
@@ -177,16 +174,46 @@ class AuthController extends GetxController {
 
   // ── Google Sign-In ────────────────────────────────────────────────────────
   Future<void> loginWithGoogle() async {
-    // ── TODO: Wire with google_sign_in + firebase_auth ─────────────────────
-    // final googleUser = await GoogleSignIn().signIn();
-    // final googleAuth = await googleUser?.authentication;
-    // final credential = GoogleAuthProvider.credential(
-    //   accessToken: googleAuth?.accessToken,
-    //   idToken: googleAuth?.idToken,
-    // );
-    // await FirebaseAuth.instance.signInWithCredential(credential);
-    // ──────────────────────────────────────────────────────────────────────
-    _snack('Coming Soon', 'Google Sign-In will be wired with Firebase.');
+    try {
+      isLoading.value = true;
+      await _authService.signInWithGoogle();
+
+      if (_authService.isAdmin) {
+        Get.offAllNamed(Routes.ADMIN_BASE);
+      } else {
+        Get.offAllNamed(Routes.USER_BASE);
+      }
+    } on FirebaseAuthException catch (e) {
+      _snack('Google Sign-In Failed', userFacingAuthError(e));
+    } catch (e) {
+      _snack('Google Sign-In Failed', userFacingAuthError(e));
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ── Google Sign-Up ────────────────────────────────────────────────────────
+  Future<void> signupWithGoogle() async {
+    try {
+      isLoading.value = true;
+      await _authService.signInWithGoogle();
+
+      if (_authService.isAdmin) {
+        Get.offAllNamed(Routes.ADMIN_BASE);
+      } else {
+        Get.offAllNamed(Routes.USER_BASE);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'account-exists-with-different-credential') {
+        _snack('اکاؤنٹ پہلے سے موجود ہے', 'یہ ای میل پہلے سے ای میل اور پاس ورڈ سے رجسٹر ہے۔ براہ کرم لاگ ان کریں۔');
+      } else {
+        _snack('Google Sign-Up Failed', userFacingAuthError(e));
+      }
+    } catch (e) {
+      _snack('Google Sign-Up Failed', userFacingAuthError(e));
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   // ── Phone / OTP ───────────────────────────────────────────────────────────

@@ -46,19 +46,8 @@ class DiscountController extends GetxController {
       return;
     }
 
-    // Important: while welcome 5% is active, DO NOT open ad.
-    if (discount.isWelcomeDiscountActive) {
-      Get.snackbar(
-        'Welcome discount active',
-        'Please use your 5% welcome discount first. After that, ads will start boosting your discount.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.primary,
-        colorText: Colors.white,
-        borderRadius: 12,
-        margin: const EdgeInsets.all(12),
-      );
-      return;
-    }
+    // New flow: welcome discount and ad progression are both usable.
+    // User should be able to watch ads and boost discount even before using welcome discount.
 
     isShowingRewardAd.value = true;
     try {

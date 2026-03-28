@@ -10,8 +10,9 @@ import 'firestore_service.dart';
 ///
 /// Rules:
 /// - First login/register: one-time 5% welcome discount.
-/// - Welcome discount blocks ad-based increment until it is used.
-/// - After usage: discount resets to 0 and ad progression is enabled.
+/// - Welcome discount does not block ad-based increment.
+/// - Ads can raise discount beyond the initial 5%, up to 20%.
+/// - After purchase (consume), discount resets to 0 and welcome use is recorded.
 /// - Ad progression:
 ///   0-5%  => +1% per 1 ad
 ///   5-10% => +1% per 2 ads
@@ -51,7 +52,8 @@ class DiscountService extends GetxService {
       !hasUsedWelcomeDiscount.value &&
       currentDiscountPercent.value >= 5;
 
-  bool get isAdProgressionEnabled => hasUsedWelcomeDiscount.value;
+  // Ads can progress discount even when welcome discount is still unused.
+  bool get isAdProgressionEnabled => true;
 
   int get adsNeededForNextPercent {
     final d = currentDiscountPercent.value;
@@ -66,12 +68,7 @@ class DiscountService extends GetxService {
     _sub?.cancel();
     final uid = AuthService.to.currentUser.value?.uid;
     if (uid == null) {
-      _setLocalState(
-        discount: 0,
-        adsCount: 0,
-        received: false,
-        used: false,
-      );
+      _setLocalState(discount: 0, adsCount: 0, received: false, used: false);
       isLoading.value = false;
       return;
     }
@@ -116,7 +113,9 @@ class DiscountService extends GetxService {
     required bool received,
     required bool used,
   }) {
-    currentDiscountPercent.value = discount.clamp(0, maxDiscountPercent).toDouble();
+    currentDiscountPercent.value = discount
+        .clamp(0, maxDiscountPercent)
+        .toDouble();
     adsWatchedCount.value = adsCount < 0 ? 0 : adsCount;
     hasReceivedWelcomeDiscount.value = received;
     hasUsedWelcomeDiscount.value = used;
@@ -125,9 +124,6 @@ class DiscountService extends GetxService {
   Future<void> onRewardedAdEarned() async {
     final uid = AuthService.to.currentUser.value?.uid;
     if (uid == null) return;
-
-    // Welcome discount is active; ads do not increase.
-    if (isWelcomeDiscountActive) return;
 
     if (currentDiscountPercent.value >= maxDiscountPercent) return;
 
@@ -149,18 +145,6 @@ class DiscountService extends GetxService {
         watched = 0;
       }
 
-      if (!used && discount >= 5) {
-        // Welcome phase blocks ad progression.
-        txn.set(ref, {
-          'hasReceivedWelcomeDiscount': true,
-          'hasUsedWelcomeDiscount': false,
-          'currentDiscountPercent': 5.0,
-          'adsWatchedCount': 0,
-          'discountUpdatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-        return;
-      }
-
       if (discount >= maxDiscountPercent) return;
 
       watched += 1;
@@ -171,8 +155,8 @@ class DiscountService extends GetxService {
       }
 
       txn.set(ref, {
-        'hasReceivedWelcomeDiscount': true,
-        'hasUsedWelcomeDiscount': true,
+        'hasReceivedWelcomeDiscount': received,
+        'hasUsedWelcomeDiscount': used,
         'currentDiscountPercent': discount,
         'adsWatchedCount': watched,
         'discountUpdatedAt': FieldValue.serverTimestamp(),
@@ -203,4 +187,3 @@ class DiscountService extends GetxService {
     return 8;
   }
 }
-

@@ -58,9 +58,13 @@ class AuthView extends GetView<AuthController> {
                     _buildDivider(),
                     const SizedBox(height: 16),
                     _SocialButton(
-                      onTap: controller.loginWithGoogle,
+                      onTap: controller.activeTab.value == AuthTab.login
+                          ? controller.loginWithGoogle
+                          : controller.signupWithGoogle,
                       icon: const _GoogleSvgIcon(),
-                      label: 'Continue with Google',
+                      label: controller.activeTab.value == AuthTab.login
+                          ? 'Continue with Google'
+                          : 'Sign up with Google',
                       backgroundColor: Colors.white,
                       textColor: AppColors.textDark,
                       borderColor: Colors.grey.shade300,
@@ -89,11 +93,6 @@ class AuthView extends GetView<AuthController> {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.secondary, AppColors.primary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
             borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
@@ -103,8 +102,13 @@ class AuthView extends GetView<AuthController> {
               ),
             ],
           ),
-          child: const Icon(Icons.water_drop_rounded,
-              color: Colors.white, size: 40),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: Image.asset(
+              'assets/images/app_icon.jpeg',
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         Text(

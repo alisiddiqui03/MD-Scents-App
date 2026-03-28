@@ -19,8 +19,11 @@ class CartView extends GetView<CartController> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: AppColors.textDark, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.textDark,
+            size: 18,
+          ),
           onPressed: () {
             if (Navigator.of(context).canPop()) {
               Get.back();
@@ -39,8 +42,10 @@ class CartView extends GetView<CartController> {
             children: [
               const Padding(
                 padding: EdgeInsets.only(right: 16),
-                child: Icon(Icons.shopping_bag_outlined,
-                    color: AppColors.textDark),
+                child: Icon(
+                  Icons.shopping_bag_outlined,
+                  color: AppColors.textDark,
+                ),
               ),
               Positioned(
                 top: 8,
@@ -57,9 +62,10 @@ class CartView extends GetView<CartController> {
                       () => Text(
                         '${controller.items.length}',
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700),
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -126,8 +132,7 @@ class CartView extends GetView<CartController> {
                 icon: Icons.money_outlined,
                 label: 'Cash on Delivery',
                 sublabel: 'Pay when you receive',
-                selected:
-                    controller.selectedPayment.value == PaymentMethod.cod,
+                selected: controller.selectedPayment.value == PaymentMethod.cod,
                 onTap: () => controller.selectPayment(PaymentMethod.cod),
               ),
               const SizedBox(height: 12),
@@ -136,7 +141,8 @@ class CartView extends GetView<CartController> {
                 icon: Icons.account_balance_outlined,
                 label: 'Bank Transfer',
                 sublabel: 'Upload payment receipt',
-                selected: controller.selectedPayment.value ==
+                selected:
+                    controller.selectedPayment.value ==
                     PaymentMethod.bankTransfer,
                 onTap: () =>
                     controller.selectPayment(PaymentMethod.bankTransfer),
@@ -175,13 +181,13 @@ class CartView extends GetView<CartController> {
             ),
           ),
           const SizedBox(height: 10),
-          _bankRow('Bank', 'HBL / Meezan Bank'),
+          _bankRow('Bank', 'Meezan Bank'),
           const SizedBox(height: 6),
-          _bankRow('Account Name', 'MD Scents'),
+          _bankRow('Account Name', 'M Umair Siddiqui '),
           const SizedBox(height: 6),
-          _bankRow('Account No.', '0123-4567890-01'),
+          _bankRow('Account No.', '99520105774580'),
           const SizedBox(height: 6),
-          _bankRow('IBAN', 'PK36HABB0000000123456702'),
+          _bankRow('IBAN', 'PK56MEZN0099520105774580'),
         ],
       ),
     );
@@ -243,8 +249,11 @@ class CartView extends GetView<CartController> {
                         padding: EdgeInsets.all(10),
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.upload_file_outlined,
-                        color: AppColors.secondary, size: 22),
+                    : const Icon(
+                        Icons.upload_file_outlined,
+                        color: AppColors.secondary,
+                        size: 22,
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -253,8 +262,9 @@ class CartView extends GetView<CartController> {
                   children: [
                     Text(
                       uploaded ? 'Receipt Uploaded' : 'Upload Payment Receipt',
-                      style: AppTextStyles.bodyLarge
-                          .copyWith(fontWeight: FontWeight.w600),
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       uploaded
@@ -325,23 +335,14 @@ class CartView extends GetView<CartController> {
             ),
             const SizedBox(height: 12),
             if (hasSplit) ...[
-              _SummaryRow(
-                label: 'Items (list price)',
-                value: gross,
-              ),
+              _SummaryRow(label: 'Items (list price)', value: gross),
               if (prodSav > 0.009) ...[
                 const SizedBox(height: 8),
-                _SummaryDiscountRow(
-                  label: 'Product discounts',
-                  value: prodSav,
-                ),
+                _SummaryDiscountRow(label: 'Product discounts', value: prodSav),
               ],
               if (globSav > 0.009) ...[
                 const SizedBox(height: 8),
-                _SummaryDiscountRow(
-                  label: 'Store discount',
-                  value: globSav,
-                ),
+                _SummaryDiscountRow(label: 'Store discount', value: globSav),
               ],
               if (userSav > 0.009) ...[
                 const SizedBox(height: 8),
@@ -351,17 +352,10 @@ class CartView extends GetView<CartController> {
                 ),
               ],
               const Divider(height: 20),
-            ]             else
-              _SummaryRow(
-                label: 'Subtotal',
-                value: controller.subtotal,
-              ),
+            ] else
+              _SummaryRow(label: 'Subtotal', value: controller.subtotal),
             const SizedBox(height: 4),
-            _SummaryRow(
-              label: 'Total',
-              value: controller.total,
-              isTotal: true,
-            ),
+            _SummaryRow(label: 'Total', value: controller.total, isTotal: true),
           ],
         ),
       );
@@ -401,9 +395,11 @@ class CartView extends GetView<CartController> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.info_outline_rounded,
-                        size: 14,
-                        color: AppColors.textDark.withValues(alpha: 0.45)),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 14,
+                      color: AppColors.textDark.withValues(alpha: 0.45),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Please upload your payment receipt first.',
@@ -449,7 +445,9 @@ class CartView extends GetView<CartController> {
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : Text(
@@ -492,114 +490,115 @@ class _CartItemCard extends StatelessWidget {
       }
 
       return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Image
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(12),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: const Icon(
-              Icons.water_drop_rounded,
-              color: AppColors.primary,
-              size: 32,
+          ],
+        ),
+        child: Row(
+          children: [
+            // Image
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.water_drop_rounded,
+                color: AppColors.primary,
+                size: 32,
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
+            const SizedBox(width: 14),
 
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: AppTextStyles.bodyLarge
-                      .copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'PKR ${item.unitPrice.toStringAsFixed(0)} / unit',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textDark.withValues(alpha: 0.55),
-                  ),
-                ),
-                if (bd != null &&
-                    (bd.productDiscountPercent > 0 ||
-                        bd.globalDiscountPercent > 0)) ...[
-                  const SizedBox(height: 4),
-                  if (listLine != null)
-                    Text(
-                      'Was PKR ${listLine.toStringAsFixed(0)} (list × qty)',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontSize: 10,
-                        color: AppColors.textDark.withValues(alpha: 0.4),
-                        decoration: TextDecoration.lineThrough,
-                      ),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                  const SizedBox(height: 2),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      if (bd.productDiscountPercent > 0)
-                        _MiniChip(
-                          label:
-                              '−${bd.productDiscountPercent.toStringAsFixed(0)}% product',
-                        ),
-                      if (bd.globalDiscountPercent > 0)
-                        _MiniChip(
-                          label:
-                              '−${bd.globalDiscountPercent.toStringAsFixed(0)}% store',
-                        ),
-                    ],
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'PKR ${item.unitPrice.toStringAsFixed(0)} / unit',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  if (bd != null &&
+                      (bd.productDiscountPercent > 0 ||
+                          bd.globalDiscountPercent > 0)) ...[
+                    const SizedBox(height: 4),
+                    if (listLine != null)
+                      Text(
+                        'Was PKR ${listLine.toStringAsFixed(0)} (list × qty)',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 10,
+                          color: AppColors.textDark.withValues(alpha: 0.4),
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    const SizedBox(height: 2),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (bd.productDiscountPercent > 0)
+                          _MiniChip(
+                            label:
+                                '−${bd.productDiscountPercent.toStringAsFixed(0)}% product',
+                          ),
+                        if (bd.globalDiscountPercent > 0)
+                          _MiniChip(
+                            label:
+                                '−${bd.globalDiscountPercent.toStringAsFixed(0)}% store',
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
+              ),
+            ),
+
+            // Qty + price
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                GestureDetector(
+                  onTap: () => controller.removeItem(item.id),
+                  child: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: AppColors.textDark.withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'PKR ${(item.unitPrice * item.qty.value).toStringAsFixed(0)}',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
-          ),
-
-          // Qty + price
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              GestureDetector(
-                onTap: () => controller.removeItem(item.id),
-                child: Icon(
-                  Icons.close,
-                  size: 16,
-                  color: AppColors.textDark.withValues(alpha: 0.4),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'PKR ${(item.unitPrice * item.qty.value).toStringAsFixed(0)}',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
     });
   }
 }
@@ -674,9 +673,11 @@ class _PaymentTile extends StatelessWidget {
                     : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon,
-                  color: selected ? AppColors.primary : Colors.grey.shade500,
-                  size: 20),
+              child: Icon(
+                icon,
+                color: selected ? AppColors.primary : Colors.grey.shade500,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -732,10 +733,7 @@ class _SummaryDiscountRow extends StatelessWidget {
   final String label;
   final double value;
 
-  const _SummaryDiscountRow({
-    required this.label,
-    required this.value,
-  });
+  const _SummaryDiscountRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -789,9 +787,12 @@ class _SummaryRow extends StatelessWidget {
           'PKR ${value.toStringAsFixed(0)}',
           style: isTotal
               ? AppTextStyles.titleLarge.copyWith(
-                  color: AppColors.primary, fontSize: 18)
+                  color: AppColors.primary,
+                  fontSize: 18,
+                )
               : AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.textDark.withValues(alpha: 0.7)),
+                  color: AppColors.textDark.withValues(alpha: 0.7),
+                ),
         ),
       ],
     );
