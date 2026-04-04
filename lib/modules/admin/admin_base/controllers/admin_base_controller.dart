@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../../../../app/services/admin_order_alert_service.dart';
+
 class AdminBaseController extends GetxController {
   final currentIndex = 0.obs;
 
@@ -18,6 +20,8 @@ class AdminBaseController extends GetxController {
   void onTabSelected(int index) {
     if (index == currentIndex.value) return;
     currentIndex.value = index;
+    if (index == 2) {
+      AdminOrderAlertService.to.acknowledgeSeenOrders();
+    }
   }
 }
-

@@ -5,34 +5,43 @@ import '../../../../app/services/order_service.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/data/models/order.dart';
 import '../../../../app/utils/admin_snackbar.dart';
+import '../../../../app/utils/order_action_time.dart';
 
 class OrdersController extends GetxController {
   final OrderService _orderService = OrderService.to;
 
   final isUpdatingPaid = false.obs;
   final isUpdatingStatus = false.obs;
+  final isCancellingOrder = false.obs;
 
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
   final dateRange = Rx<DateTimeRange?>(null);
 
+  final statusFilter = Rxn<OrderStatus>();
+
   List<Order> get orders => _orderService.orders;
 
-  /// Search + date filter (admin).
   List<Order> get displayedOrders {
     final all = List<Order>.from(_orderService.orders);
     final q = searchQuery.value.trim().toLowerCase();
     Iterable<Order> iter = all;
     if (q.isNotEmpty) {
       iter = iter.where((o) {
+        final phone = o.deliveryPhone.toLowerCase();
         return o.id.toLowerCase().contains(q) ||
             o.customerName.toLowerCase().contains(q) ||
-            o.customerEmail.toLowerCase().contains(q);
+            o.customerEmail.toLowerCase().contains(q) ||
+            phone.contains(q);
       });
     }
     final range = dateRange.value;
     if (range != null) {
-      final start = DateTime(range.start.year, range.start.month, range.start.day);
+      final start = DateTime(
+        range.start.year,
+        range.start.month,
+        range.start.day,
+      );
       final end = DateTime(
         range.end.year,
         range.end.month,
@@ -46,7 +55,36 @@ class OrdersController extends GetxController {
         return !d.isBefore(start) && !d.isAfter(end);
       });
     }
-    return iter.toList();
+    final status = statusFilter.value;
+    if (status != null) {
+      iter = iter.where((o) => o.status == status);
+    }
+    final list = iter.toList();
+    if (status == null) {
+      list.sort((a, b) {
+        final c = _statusRank(a.status).compareTo(_statusRank(b.status));
+        if (c != 0) return c;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+    } else {
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+    return list;
+  }
+
+  static int _statusRank(OrderStatus s) {
+    switch (s) {
+      case OrderStatus.pending:
+        return 0;
+      case OrderStatus.packed:
+        return 1;
+      case OrderStatus.shipped:
+        return 2;
+      case OrderStatus.delivered:
+        return 3;
+      case OrderStatus.cancelled:
+        return 4;
+    }
   }
 
   @override
@@ -75,6 +113,11 @@ class OrdersController extends GetxController {
   void clearAllFilters() {
     clearSearch();
     clearDateFilter();
+    statusFilter.value = null;
+  }
+
+  void setStatusFilter(OrderStatus? status) {
+    statusFilter.value = status;
   }
 
   Future<void> pickDateRange() async {
@@ -85,11 +128,9 @@ class OrdersController extends GetxController {
       context: ctx,
       firstDate: DateTime(now.year - 2),
       lastDate: DateTime(now.year + 1, 12, 31),
-      initialDateRange: dateRange.value ??
-          DateTimeRange(
-            start: now.subtract(const Duration(days: 7)),
-            end: now,
-          ),
+      initialDateRange:
+          dateRange.value ??
+          DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -113,8 +154,7 @@ class OrdersController extends GetxController {
     }
   }
 
-  static String _fmt(DateTime d) =>
-      '${d.day}/${d.month}/${d.year}';
+  static String _fmt(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
   Future<void> updateStatus(Order order, OrderStatus status) async {
     isUpdatingStatus.value = true;
@@ -122,7 +162,7 @@ class OrdersController extends GetxController {
       await _orderService.updateStatus(order, status);
       AdminSnackbar.success(
         'Order updated',
-        'Status: ${_statusLabel(status)}',
+        'Status: ${_statusLabel(status)} · ${formatOrderActionTime()}',
       );
     } catch (e) {
       AdminSnackbar.error('Could not update', e.toString());
@@ -131,7 +171,6 @@ class OrdersController extends GetxController {
     }
   }
 
-  /// Admin confirms payment (e.g. COD cash received or bank verified).
   Future<void> setOrderPaid(Order order, bool isPaid) async {
     if (order.firestorePath == null) return;
     isUpdatingPaid.value = true;
@@ -140,13 +179,37 @@ class OrdersController extends GetxController {
       AdminSnackbar.success(
         isPaid ? 'Payment confirmed' : 'Marked as unpaid',
         isPaid
-            ? 'This order is marked as paid.'
-            : 'You can mark paid again after receiving payment.',
+            ? 'Marked as paid · ${formatOrderActionTime()}'
+            : 'Marked unpaid · ${formatOrderActionTime()}',
       );
     } catch (e) {
       AdminSnackbar.error('Update failed', e.toString());
     } finally {
       isUpdatingPaid.value = false;
+    }
+  }
+
+  Future<void> cancelOrderWithReason(Order order, String reason) async {
+    final trimmed = reason.trim();
+    if (trimmed.isEmpty) {
+      AdminSnackbar.error(
+        'Reason required',
+        'Enter a cancellation reason so the customer knows why.',
+      );
+      return;
+    }
+    isCancellingOrder.value = true;
+    try {
+      await _orderService.cancelOrderWithReason(order, trimmed);
+      AdminSnackbar.success(
+        'Order cancelled',
+        'Customer notified · ${formatOrderActionTime()}',
+      );
+    } catch (e) {
+      AdminSnackbar.error('Could not cancel', e.toString());
+      rethrow;
+    } finally {
+      isCancellingOrder.value = false;
     }
   }
 }

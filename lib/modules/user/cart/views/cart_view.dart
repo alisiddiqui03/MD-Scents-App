@@ -5,6 +5,7 @@ import '../controllers/cart_controller.dart';
 import '../../user_base/controllers/user_base_controller.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../app/services/auth_service.dart';
 import '../../../../app/services/discount_service.dart';
 import '../../../../app/services/product_service.dart';
 
@@ -85,6 +86,8 @@ class CartView extends GetView<CartController> {
                 children: [
                   _buildCartItems(),
                   const SizedBox(height: 24),
+                  _buildDeliverySection(),
+                  const SizedBox(height: 24),
                   _buildPaymentOptions(),
                   const SizedBox(height: 24),
                   _buildOrderSummary(),
@@ -116,6 +119,150 @@ class CartView extends GetView<CartController> {
     );
   }
 
+  // ── Delivery ────────────────────────────────────────────────────────────────
+
+  static final TextStyle _deliveryInputTextStyle = AppTextStyles.bodyLarge
+      .copyWith(
+        color: AppColors.textDark,
+        fontWeight: FontWeight.w600,
+        height: 1.35,
+      );
+
+  InputDecoration _deliveryFieldDecoration({
+    required String label,
+    String? hint,
+  }) {
+    final borderRadius = BorderRadius.circular(12);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white,
+      labelStyle: AppTextStyles.bodyMedium.copyWith(
+        color: AppColors.textDark.withValues(alpha: 0.62),
+        fontWeight: FontWeight.w500,
+      ),
+      floatingLabelStyle: AppTextStyles.bodyMedium.copyWith(
+        color: AppColors.primary,
+        fontWeight: FontWeight.w600,
+      ),
+      hintStyle: AppTextStyles.bodyMedium.copyWith(
+        color: AppColors.textDark.withValues(alpha: 0.38),
+        fontSize: 14,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildDeliverySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text('Delivery details', style: AppTextStyles.titleLarge),
+            ),
+            Obx(() {
+              final loggedIn = AuthService.to.currentUser.value != null;
+              if (!loggedIn) return const SizedBox.shrink();
+              return TextButton.icon(
+                onPressed: () => controller.openDeliveryAddressPicker(),
+                icon: Icon(
+                  Icons.location_on_outlined,
+                  size: 18,
+                  color: AppColors.secondary,
+                ),
+                label: Text(
+                  'Saved / new',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.only(left: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              );
+            }),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Phone and street are required. Tap Saved / new anytime to switch address.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textDark.withValues(alpha: 0.5),
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: controller.deliveryPhoneController,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+          style: _deliveryInputTextStyle,
+          cursorColor: AppColors.primary,
+          onChanged: (_) => controller.notifyDeliveryChanged(),
+          decoration: _deliveryFieldDecoration(
+            label: 'Phone number *',
+            hint: '03xx-xxxxxxx',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: controller.deliveryStreetController,
+          keyboardType: TextInputType.streetAddress,
+          textInputAction: TextInputAction.next,
+          maxLines: 2,
+          style: _deliveryInputTextStyle,
+          cursorColor: AppColors.primary,
+          onChanged: (_) => controller.notifyDeliveryChanged(),
+          decoration: _deliveryFieldDecoration(
+            label: 'Street / area *',
+            hint: 'House / street, area',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: controller.deliveryCityController,
+          textInputAction: TextInputAction.next,
+          textCapitalization: TextCapitalization.words,
+          style: _deliveryInputTextStyle,
+          cursorColor: AppColors.primary,
+          onChanged: (_) => controller.notifyDeliveryChanged(),
+          decoration: _deliveryFieldDecoration(label: 'City', hint: 'Optional'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: controller.deliveryPostalController,
+          textInputAction: TextInputAction.done,
+          style: _deliveryInputTextStyle,
+          cursorColor: AppColors.primary,
+          onChanged: (_) => controller.notifyDeliveryChanged(),
+          decoration: _deliveryFieldDecoration(
+            label: 'Postal code',
+            hint: 'Optional',
+          ),
+        ),
+      ],
+    );
+  }
+
   // ── Payment options ─────────────────────────────────────────────────────────
 
   Widget _buildPaymentOptions() {
@@ -131,7 +278,9 @@ class CartView extends GetView<CartController> {
               _PaymentTile(
                 icon: Icons.money_outlined,
                 label: 'Cash on Delivery',
-                sublabel: 'Pay when you receive',
+                sublabel: controller.total < kCodMaxPkr
+                    ? 'Pay when you receive'
+                    : 'Only for orders under PKR ${kCodMaxPkr.toStringAsFixed(0)}',
                 selected: controller.selectedPayment.value == PaymentMethod.cod,
                 onTap: () => controller.selectPayment(PaymentMethod.cod),
               ),
@@ -366,13 +515,47 @@ class CartView extends GetView<CartController> {
 
   Widget _buildCheckoutBar() {
     return Obx(() {
+      // Subscriptions — keep so the bar rebuilds when cart, auth, or fields change.
+      controller.items.length;
+      controller.deliveryInputVersion.value;
+      controller.selectedPayment.value;
+      controller.receiptUploaded.value;
+      controller.receiptUrl.value;
+      controller.isPlacing.value;
+      AuthService.to.currentUser.value;
+      DiscountService.to.currentDiscountPercent.value;
+      ProductService.to.productsVersion.value;
+
+      final hasItems = controller.items.isNotEmpty;
+      final loggedIn = AuthService.to.currentUser.value != null;
+      final phoneOk = controller.deliveryPhoneController.text.trim().isNotEmpty;
+      final streetOk = controller.deliveryStreetController.text
+          .trim()
+          .isNotEmpty;
+      final deliveryOk = phoneOk && streetOk;
       final isBankTransfer =
           controller.selectedPayment.value == PaymentMethod.bankTransfer;
-      final receiptReady = controller.receiptUploaded.value;
+      final receiptReady = controller.receiptUploaded.value &&
+          controller.receiptUrl.value.trim().isNotEmpty;
       final isPlacing = controller.isPlacing.value;
-      final canPlace = (!isBankTransfer || receiptReady) && !isPlacing;
+      final canPlace = controller.isReadyToPlaceOrder;
       final label = isBankTransfer ? 'Confirm Order' : 'Place Order';
       final showEnabledStyle = canPlace || isPlacing;
+
+      String? hint;
+      if (!hasItems) {
+        hint = 'Add products to your cart first.';
+      } else if (!loggedIn) {
+        hint = 'Sign in to place your order.';
+      } else if (!deliveryOk) {
+        hint = 'Enter phone number and street address.';
+      } else if (isBankTransfer && !receiptReady) {
+        hint = 'Upload your bank transfer receipt to continue.';
+      } else if (controller.selectedPayment.value == PaymentMethod.cod &&
+          controller.total >= kCodMaxPkr) {
+        hint =
+            'COD is only under PKR ${kCodMaxPkr.toStringAsFixed(0)}. Use bank transfer or reduce total.';
+      }
 
       return Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
@@ -389,7 +572,7 @@ class CartView extends GetView<CartController> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isBankTransfer && !receiptReady)
+            if (hint != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Row(
@@ -401,11 +584,14 @@ class CartView extends GetView<CartController> {
                       color: AppColors.textDark.withValues(alpha: 0.45),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      'Please upload your payment receipt first.',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontSize: 12,
-                        color: AppColors.textDark.withValues(alpha: 0.5),
+                    Expanded(
+                      child: Text(
+                        hint,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textDark.withValues(alpha: 0.5),
+                        ),
                       ),
                     ),
                   ],
@@ -663,6 +849,7 @@ class _PaymentTile extends StatelessWidget {
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 40,
@@ -681,44 +868,56 @@ class _PaymentTile extends StatelessWidget {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                label,
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.primary : AppColors.textDark,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: selected ? AppColors.primary : AppColors.textDark,
+                    ),
+                  ),
+                  if (sublabel.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      sublabel,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textDark.withValues(alpha: 0.55),
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (sublabel.isNotEmpty)
-              Text(
-                sublabel,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textDark.withValues(alpha: 0.55),
-                ),
-              ),
             const SizedBox(width: 8),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? AppColors.primary : Colors.grey.shade300,
-                  width: 2,
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? AppColors.primary : Colors.grey.shade300,
+                    width: 2,
+                  ),
                 ),
-              ),
-              child: selected
-                  ? Center(
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
+                child: selected
+                    ? Center(
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-                    )
-                  : null,
+                      )
+                    : null,
+              ),
             ),
           ],
         ),

@@ -7,6 +7,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/data/models/product.dart';
 import '../../../../app/services/product_service.dart';
+import '../../../../app/utils/order_action_time.dart';
 import '../../../../app/widgets/loading_overlay.dart';
 
 class InventoryView extends GetView<InventoryController> {
@@ -17,7 +18,7 @@ class InventoryView extends GetView<InventoryController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Inventory & Discounts'),
+        title: const Text('Inventory'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -25,106 +26,126 @@ class InventoryView extends GetView<InventoryController> {
           ),
         ],
       ),
-      body: Obx(
-        () => LoadingOverlay(
-          isLoading: controller.isDeleting.value,
-          title: 'Removing product',
-          subtitle: 'Updating your inventory…',
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Obx(() {
-              final items = controller.items;
-              final loading =
-                  ProductService.to.isProductsLoading.value && items.isEmpty;
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Obx(
+            () => LoadingOverlay(
+              isLoading: controller.isDeleting.value,
+              title: 'Removing product',
+              subtitle: 'Updating your inventory…',
+              child: Obx(() {
+                final items = controller.items;
+                final loading =
+                    ProductService.to.isProductsLoading.value && items.isEmpty;
 
-              if (loading) {
-                return RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () => ProductService.to.refreshCatalogFromServer(),
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.sizeOf(context).height * 0.4,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const CircularProgressIndicator(
-                                  color: AppColors.primary),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Loading inventory...',
+                if (loading) {
+                  return RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: () =>
+                        ProductService.to.refreshCatalogFromServer(),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Loading inventory...',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.textDark.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (items.isEmpty) {
+                  return RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: () =>
+                        ProductService.to.refreshCatalogFromServer(),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'No products in inventory yet.\nTap "Add product" to create one.',
                                 style: AppTextStyles.bodyMedium.copyWith(
                                   color: AppColors.textDark.withValues(
-                                      alpha: 0.6),
+                                    alpha: 0.6,
+                                  ),
                                 ),
+                                textAlign: TextAlign.center,
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              if (items.isEmpty) {
-                return RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () => ProductService.to.refreshCatalogFromServer(),
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.sizeOf(context).height * 0.45,
-                        child: Center(
-                          child: Text(
-                            'No products in inventory yet.\nTap "Add product" to create one.',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.textDark.withValues(alpha: 0.6),
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              final filtered = controller.filteredItems;
-              final hasSearch = controller.searchQuery.value.trim().isNotEmpty;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SearchBar(controller: controller),
-                  const SizedBox(height: 12),
-                  _AdminDiscountCard(),
-                  const SizedBox(height: 12),
-                  _AdminUserDiscountMonitor(controller: controller),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Total stock: ${controller.totalItems}'
-                    '${hasSearch ? ' • ${filtered.length} shown' : ''}',
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: AppColors.textDark,
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? RefreshIndicator(
-                            color: AppColors.primary,
-                            onRefresh: () =>
-                                ProductService.to.refreshCatalogFromServer(),
-                            child: ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: [
-                                SizedBox(
-                                  height:
-                                      MediaQuery.sizeOf(context).height * 0.35,
+                  );
+                }
+
+                final filtered = controller.filteredItems;
+                final hasSearch =
+                    controller.searchQuery.value.trim().isNotEmpty;
+
+                // Search stays fixed; everything below scrolls in one scroll view.
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SearchBar(controller: controller),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () =>
+                            ProductService.to.refreshCatalogFromServer(),
+                        child: CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    'Total stock: ${controller.totalItems}'
+                                    '${hasSearch ? ' • ${filtered.length} shown' : ''}',
+                                    style: AppTextStyles.bodyLarge.copyWith(
+                                      color: AppColors.textDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
+                            ),
+                            if (filtered.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 24,
+                                  ),
                                   child: Center(
                                     child: Text(
                                       'No products match "${controller.searchQuery.value.trim()}".\nTry a different name.',
@@ -137,24 +158,27 @@ class InventoryView extends GetView<InventoryController> {
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            color: AppColors.primary,
-                            onRefresh: () =>
-                                ProductService.to.refreshCatalogFromServer(),
-                            child: ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              itemCount: filtered.length,
-                              itemBuilder: (_, i) =>
-                                  _InventoryTile(product: filtered[i]),
-                            ),
-                          ),
-                  ),
-                ],
-              );
-            }),
+                              )
+                            else
+                              SliverPadding(
+                                padding: const EdgeInsets.only(bottom: 88),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, i) => _InventoryTile(
+                                      product: filtered[i],
+                                    ),
+                                    childCount: filtered.length,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
           ),
         ),
       ),
@@ -220,294 +244,6 @@ class _SearchBar extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _AdminDiscountCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final c = Get.find<InventoryController>();
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1F2A44), Color(0xFF8B5CF6)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Ads & Discount',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Icon(
-                Icons.info_outline_rounded,
-                color: Colors.white.withValues(alpha: 0.85),
-                size: 18,
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Welcome discount is fixed at 5%. Ad progression is fixed up to 20%.',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '0-5: 1 ad/+1%  •  5-10: 2 ads/+1%  •  10-15: 4 ads/+1%  •  15-20: 8 ads/+1%',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => _showAdsConfigSheet(c),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('View flow details'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAdsConfigSheet(InventoryController c) {
-    c.syncAdConfigFromProductService();
-    Get.bottomSheet(
-      Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Ads discount flow', style: AppTextStyles.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              'User discount progression now follows fixed rules. You can enable or disable ad rewards below.',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textDark.withValues(alpha: 0.7),
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Welcome discount', style: AppTextStyles.bodyLarge),
-                  const SizedBox(height: 4),
-                  Text(
-                    '• First-time user gets 5% once\n'
-                    '• User must use this 5% before ad boosts start',
-                    style: AppTextStyles.bodyMedium.copyWith(fontSize: 12),
-                  ),
-                  const SizedBox(height: 10),
-                  Text('Ad progression (fixed)', style: AppTextStyles.bodyLarge),
-                  const SizedBox(height: 4),
-                  Text(
-                    '• 0% → 5%: +1% per 1 ad\n'
-                    '• 5% → 10%: +1% per 2 ads\n'
-                    '• 10% → 15%: +1% per 4 ads\n'
-                    '• 15% → 20%: +1% per 8 ads',
-                    style: AppTextStyles.bodyMedium.copyWith(fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This flow is now fixed by app logic and user-level Firebase fields.',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textDark.withValues(alpha: 0.55),
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AdminUserDiscountMonitor extends StatelessWidget {
-  const _AdminUserDiscountMonitor({required this.controller});
-
-  final InventoryController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      if (controller.isUserDiscountsLoading.value) {
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Loading user discount monitor...',
-                style: AppTextStyles.bodyMedium,
-              ),
-            ],
-          ),
-        );
-      }
-
-      final rows = controller.userDiscountRows.take(8).toList();
-      if (rows.isEmpty) {
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Text(
-            'No user discount data yet.',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textDark.withValues(alpha: 0.6),
-            ),
-          ),
-        );
-      }
-
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('User Discount Monitor', style: AppTextStyles.bodyLarge),
-            const SizedBox(height: 2),
-            Text(
-              'Top users by current discount',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textDark.withValues(alpha: 0.55),
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...rows.map(
-              (u) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        u.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${u.currentDiscountPercent.toStringAsFixed(0)}%',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Ads: ${u.adsWatchedCount}',
-                      style: AppTextStyles.bodyMedium.copyWith(fontSize: 11),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (!u.hasUsedWelcomeDiscount &&
-                                u.hasReceivedWelcomeDiscount)
-                            ? AppColors.accent.withValues(alpha: 0.15)
-                            : AppColors.success.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        (!u.hasUsedWelcomeDiscount &&
-                                u.hasReceivedWelcomeDiscount)
-                            ? 'Welcome'
-                            : 'Ad mode',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
   }
 }
 
@@ -627,6 +363,22 @@ class _InventoryTile extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (product.createdAt != null ||
+                        product.updatedAt != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        [
+                          if (product.createdAt != null)
+                            'Added ${formatOrderActionTime(product.createdAt)}',
+                          if (product.updatedAt != null)
+                            'Updated ${formatOrderActionTime(product.updatedAt)}',
+                        ].join(' · '),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 10,
+                          color: AppColors.textDark.withValues(alpha: 0.45),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

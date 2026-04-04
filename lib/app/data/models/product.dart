@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ProductItem {
   final String id;
   final String name;
@@ -16,6 +18,10 @@ class ProductItem {
   /// Optional long text from Firestore (admin).
   final String? description;
 
+  /// Set by Firestore on create/update (admin inventory).
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
   /// First image for grids, cart, wishlist (legacy single-field compat).
   String get imageUrl => imageUrls.isNotEmpty ? imageUrls.first : '';
 
@@ -33,6 +39,8 @@ class ProductItem {
     this.category,
     this.discountPercent = 0,
     this.description,
+    this.createdAt,
+    this.updatedAt,
   });
 
   static List<String> _parseImageUrls(Map<String, dynamic> data) {
@@ -73,7 +81,14 @@ class ProductItem {
         final t = d.trim();
         return t.isEmpty ? null : t;
       }(),
+      createdAt: _tsToDate(data['createdAt']),
+      updatedAt: _tsToDate(data['updatedAt']),
     );
+  }
+
+  static DateTime? _tsToDate(dynamic v) {
+    if (v is Timestamp) return v.toDate();
+    return null;
   }
 
   Map<String, dynamic> toMap() {

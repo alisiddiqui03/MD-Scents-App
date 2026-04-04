@@ -9,6 +9,8 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/services/product_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../app/widgets/app_branded_loading.dart';
+
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
 
@@ -19,7 +21,7 @@ class ProfileView extends GetView<ProfileController> {
       body: Obx(() {
         final user = AuthService.to.currentUser.value;
         if (user == null) {
-          return const Center(child: CircularProgressIndicator());
+          return const AppBrandedLoading();
         }
 
         return CustomScrollView(
@@ -59,10 +61,11 @@ class ProfileView extends GetView<ProfileController> {
   }
 
   Widget _buildSliverHeader(String? displayName, String? email, bool isAdmin) {
-    final initials = (displayName?.isNotEmpty == true
-            ? displayName!.trim().split(' ').map((e) => e[0]).take(2).join()
-            : 'U')
-        .toUpperCase();
+    final initials =
+        (displayName?.isNotEmpty == true
+                ? displayName!.trim().split(' ').map((e) => e[0]).take(2).join()
+                : 'U')
+            .toUpperCase();
 
     return SliverAppBar(
       expandedHeight: 220,
@@ -97,8 +100,7 @@ class ProfileView extends GetView<ProfileController> {
                 const SizedBox(height: 12),
                 Text(
                   displayName ?? 'Guest User',
-                  style:
-                      AppTextStyles.titleLarge.copyWith(color: Colors.white),
+                  style: AppTextStyles.titleLarge.copyWith(color: Colors.white),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -111,7 +113,9 @@ class ProfileView extends GetView<ProfileController> {
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 5),
+                      horizontal: 14,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.accent.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(20),
@@ -162,14 +166,14 @@ class ProfileView extends GetView<ProfileController> {
                 icon: Icons.receipt_long_outlined,
                 onTap: () => Get.toNamed(Routes.USER_ORDERS),
               ),
-            _divider(),
-            _StatItem(
-              value: '$wishCount',
-              label: 'Wishlist',
-              icon: Icons.favorite_border_rounded,
-              onTap: () => Get.toNamed(Routes.USER_WISHLIST),
-            ),
-          ],
+              _divider(),
+              _StatItem(
+                value: '$wishCount',
+                label: 'Wishlist',
+                icon: Icons.favorite_border_rounded,
+                onTap: () => Get.toNamed(Routes.USER_WISHLIST),
+              ),
+            ],
           );
         }),
       ),
@@ -185,8 +189,7 @@ class ProfileView extends GetView<ProfileController> {
             label: 'Admin dashboard',
             subtitle: 'Sales, charts & quick stats',
             color: AppColors.primary,
-            onTap: () =>
-                Get.toNamed(Routes.ADMIN_BASE, arguments: {'tab': 0}),
+            onTap: () => Get.toNamed(Routes.ADMIN_BASE, arguments: {'tab': 0}),
           ),
         ),
         _MenuItemTile(
@@ -195,19 +198,15 @@ class ProfileView extends GetView<ProfileController> {
             label: 'Store settings',
             subtitle: 'Global discount & low stock threshold',
             color: AppColors.secondary,
-            onTap: () =>
-                Get.toNamed(Routes.ADMIN_BASE, arguments: {'tab': 3}),
+            onTap: () => Get.toNamed(Routes.ADMIN_BASE, arguments: {'tab': 3}),
           ),
         ),
       ],
     );
   }
 
-  Widget _divider() => Container(
-        width: 1,
-        height: 40,
-        color: Colors.grey.shade200,
-      );
+  Widget _divider() =>
+      Container(width: 1, height: 40, color: Colors.grey.shade200);
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -220,51 +219,64 @@ class ProfileView extends GetView<ProfileController> {
   }
 
   Widget _buildAccountSection() {
-    return _MenuCard(
-      items: [
-        Obx(
-          () => _MenuItemTile(
-            item: _MenuItem(
-              icon: Icons.shopping_bag_outlined,
-              label: 'My Orders',
-              subtitle: 'Track, return or buy again',
-              badge: controller.orderCount.value > 0
-                  ? '${controller.orderCount.value}'
-                  : null,
-              color: AppColors.primary,
-              onTap: () => Get.toNamed(Routes.USER_ORDERS),
+    return Obx(() {
+      final admin = AuthService.to.currentUser.value?.isAdmin == true;
+      return _MenuCard(
+        items: [
+          Obx(
+            () => _MenuItemTile(
+              item: _MenuItem(
+                icon: Icons.shopping_bag_outlined,
+                label: 'My Orders',
+                subtitle: 'Track, return or buy again',
+                badge: controller.orderCount.value > 0
+                    ? '${controller.orderCount.value}'
+                    : null,
+                color: AppColors.primary,
+                onTap: () => Get.toNamed(Routes.USER_ORDERS),
+              ),
             ),
           ),
-        ),
-        _MenuItemTile(
-          item: _MenuItem(
-            icon: Icons.favorite_border_rounded,
-            label: 'Wishlist',
-            subtitle: 'Items you saved for later',
-            color: AppColors.danger,
-            onTap: () => Get.toNamed(Routes.USER_WISHLIST),
+          if (admin)
+            _MenuItemTile(
+              item: _MenuItem(
+                icon: Icons.campaign_outlined,
+                label: 'Ads & user discounts',
+                subtitle: 'Ad flow and user discount monitor',
+                color: AppColors.secondary,
+                onTap: () => Get.toNamed(Routes.ADMIN_ADS_DISCOUNT),
+              ),
+            ),
+          _MenuItemTile(
+            item: _MenuItem(
+              icon: Icons.favorite_border_rounded,
+              label: 'Wishlist',
+              subtitle: 'Items you saved for later',
+              color: AppColors.danger,
+              onTap: () => Get.toNamed(Routes.USER_WISHLIST),
+            ),
           ),
-        ),
-        _MenuItemTile(
-          item: _MenuItem(
-            icon: Icons.location_on_outlined,
-            label: 'Delivery Addresses',
-            subtitle: 'Manage your saved addresses',
-            color: AppColors.success,
-            onTap: () => Get.toNamed(Routes.USER_ADDRESSES),
+          _MenuItemTile(
+            item: _MenuItem(
+              icon: Icons.location_on_outlined,
+              label: 'Delivery Addresses',
+              subtitle: 'Manage your saved addresses',
+              color: AppColors.success,
+              onTap: () => Get.toNamed(Routes.USER_ADDRESSES),
+            ),
           ),
-        ),
-        _MenuItemTile(
-          item: _MenuItem(
-            icon: Icons.local_offer_outlined,
-            label: 'Coupons & Offers',
-            subtitle: 'View available discounts',
-            color: AppColors.accent,
-            onTap: () => Get.toNamed(Routes.USER_DISCOUNT),
+          _MenuItemTile(
+            item: _MenuItem(
+              icon: Icons.local_offer_outlined,
+              label: 'Coupons & Offers',
+              subtitle: 'View available discounts',
+              color: AppColors.accent,
+              onTap: () => Get.toNamed(Routes.USER_DISCOUNT),
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    });
   }
 
   Widget _buildSupportSection(BuildContext context) {
@@ -286,7 +298,7 @@ class ProfileView extends GetView<ProfileController> {
                   'How do I pay via Bank Transfer?\n'
                   'At checkout, select "Bank Transfer." You will be provided with our account details. Once you have transferred the amount, simply upload a screenshot of your payment receipt directly in the app to verify your order.\n\n'
                   'How much is delivery?\n'
-                  'Delivery is as per TCS standard charges across Pakistan. However, we offer Free Delivery on purchase of 3 or more perfumes.\n\n'
+                  'Delivery is as per TCS standard charges across Pakistan.\n\n'
                   'Discounts & Rewards\n\n'
                   'How does the "Boost Discount" feature work?\n'
                   'All new users automatically get a 5% discount! You can increase this discount up to 20% by tapping the "Boost" button and watching short video ads. Each fully watched ad adds +0.25% to your total discount.\n\n'
@@ -358,7 +370,7 @@ class ProfileView extends GetView<ProfileController> {
         _MenuItemTile(
           item: _MenuItem(
             icon: Icons.local_fire_department_outlined,
-            label: 'Discover Glowvella',
+            label: 'Discover Glowella',
             subtitle: 'Explore our Glowvella beauty app',
             color: AppColors.accent,
             onTap: () => _showGlowvellaSheet(context),
@@ -368,24 +380,28 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  void _showInfoDialog(BuildContext context,
-      {required String title, required String content}) {
+  void _showInfoDialog(
+    BuildContext context, {
+    required String title,
+    required String content,
+  }) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title, style: AppTextStyles.titleLarge),
         content: SingleChildScrollView(
-          child: Text(content,
-              style: AppTextStyles.bodyMedium.copyWith(height: 1.6)),
+          child: Text(
+            content,
+            style: AppTextStyles.bodyMedium.copyWith(height: 1.6),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Close',
-              style: AppTextStyles.bodyLarge
-                  .copyWith(color: AppColors.primary),
+              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.primary),
             ),
           ),
         ],
@@ -439,16 +455,17 @@ class ProfileView extends GetView<ProfileController> {
                 _SocialLinkTile(
                   icon: Icons.camera_alt_outlined,
                   label: 'Instagram',
-                  handle: '@mdscents',
+                  handle: '@m.d.scents',
                   color: const Color(0xFFE1306C),
-                  url: 'https://instagram.com',
+                  url:
+                      'https://www.instagram.com/m.d.scents?igsh=cHkzZXd5eDhxeGE3',
                 ),
                 _SocialLinkTile(
                   icon: Icons.facebook_outlined,
                   label: 'Facebook',
-                  handle: '/mdscents',
+                  handle: '/mistydesirescents',
                   color: const Color(0xFF1877F2),
-                  url: 'https://facebook.com',
+                  url: 'https://www.facebook.com/mistydesirescents',
                 ),
               ],
             ),
@@ -577,19 +594,22 @@ class ProfileView extends GetView<ProfileController> {
           decoration: BoxDecoration(
             color: AppColors.danger.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+            border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.logout_rounded,
-                  color: AppColors.danger, size: 20),
+              const Icon(
+                Icons.logout_rounded,
+                color: AppColors.danger,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Text(
                 'Sign Out',
-                style:
-                    AppTextStyles.buttonText.copyWith(color: AppColors.danger),
+                style: AppTextStyles.buttonText.copyWith(
+                  color: AppColors.danger,
+                ),
               ),
             ],
           ),
@@ -720,8 +740,7 @@ class _AdminLowStockBanner extends StatelessWidget {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () =>
-              Get.toNamed(Routes.ADMIN_BASE, arguments: {'tab': 1}),
+          onTap: () => Get.toNamed(Routes.ADMIN_BASE, arguments: {'tab': 1}),
           borderRadius: BorderRadius.circular(14),
           child: Container(
             width: double.infinity,
@@ -792,8 +811,7 @@ class _MenuItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 40,
         height: 40,
@@ -816,8 +834,7 @@ class _MenuItemTile extends StatelessWidget {
       ),
       trailing: item.badge != null
           ? Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AppColors.danger,
                 borderRadius: BorderRadius.circular(12),
@@ -830,8 +847,11 @@ class _MenuItemTile extends StatelessWidget {
                 ),
               ),
             )
-          : Icon(Icons.chevron_right,
-              color: AppColors.textDark.withValues(alpha: 0.3), size: 20),
+          : Icon(
+              Icons.chevron_right,
+              color: AppColors.textDark.withValues(alpha: 0.3),
+              size: 20,
+            ),
       onTap: item.onTap,
     );
   }

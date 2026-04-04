@@ -68,18 +68,38 @@ class ProductService extends GetxService {
 
   List<ProductItem> get latestProducts {
     final list = _allProducts.where((p) => p.isActive).toList();
-    list.sort((a, b) {
-      // New products first
-      if (a.isNew == b.isNew) return 0;
-      return a.isNew ? -1 : 1;
-    });
+    _sortCatalogNewestFirst(list);
     return list;
   }
 
   /// Home horizontal strip — admin marks products as featured when saving.
-  List<ProductItem> get featuredProducts => _allProducts
-      .where((p) => p.isActive && p.isFeatured)
-      .toList();
+  List<ProductItem> get featuredProducts {
+    final list = _allProducts
+        .where((p) => p.isActive && p.isFeatured)
+        .toList();
+    _sortCatalogNewestFirst(list);
+    return list;
+  }
+
+  /// Recently updated first (e.g. admin restocked), then [isNew], else stable.
+  static int compareCatalogNewestFirst(ProductItem a, ProductItem b) {
+    final ta = a.updatedAt ?? a.createdAt;
+    final tb = b.updatedAt ?? b.createdAt;
+    if (ta != null && tb != null) {
+      final c = tb.compareTo(ta);
+      if (c != 0) return c;
+    } else if (ta != null) {
+      return -1;
+    } else if (tb != null) {
+      return 1;
+    }
+    if (a.isNew != b.isNew) return a.isNew ? -1 : 1;
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  void _sortCatalogNewestFirst(List<ProductItem> list) {
+    list.sort(compareCatalogNewestFirst);
+  }
 
   List<ProductItem> getAllProducts() => _allProducts.toList();
 
@@ -185,9 +205,14 @@ class ProductService extends GetxService {
   }
 
   Future<void> upsertProduct(ProductItem product) async {
-    await FirestoreService.productsCollection
-        .doc(product.id)
-        .set(product.toMap(), SetOptions(merge: true));
+    final ref = FirestoreService.productsCollection.doc(product.id);
+    final exists = (await ref.get()).exists;
+    final data = product.toMap();
+    data['updatedAt'] = FieldValue.serverTimestamp();
+    if (!exists) {
+      data['createdAt'] = FieldValue.serverTimestamp();
+    }
+    await ref.set(data, SetOptions(merge: true));
   }
 
   Future<void> deleteProduct(String id) async {

@@ -7,6 +7,7 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/data/models/order.dart';
 import '../../../../app/services/order_service.dart';
+import '../../../../app/utils/order_action_time.dart';
 import '../../../../app/widgets/loading_overlay.dart';
 
 class OrdersView extends GetView<OrdersController> {
@@ -16,18 +17,22 @@ class OrdersView extends GetView<OrdersController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Orders'),
-      ),
+      appBar: AppBar(title: const Text('Orders')),
       body: Obx(
         () => LoadingOverlay(
           isLoading: controller.isUpdatingPaid.value ||
-              controller.isUpdatingStatus.value,
-          title: controller.isUpdatingPaid.value
-              ? 'Updating payment'
-              : (controller.isUpdatingStatus.value ? 'Updating order' : null),
+              controller.isUpdatingStatus.value ||
+              controller.isCancellingOrder.value,
+          title: controller.isCancellingOrder.value
+              ? 'Cancelling order'
+              : (controller.isUpdatingPaid.value
+                  ? 'Updating payment'
+                  : (controller.isUpdatingStatus.value
+                      ? 'Updating order'
+                      : null)),
           subtitle: controller.isUpdatingPaid.value ||
-                  controller.isUpdatingStatus.value
+                  controller.isUpdatingStatus.value ||
+                  controller.isCancellingOrder.value
               ? 'Syncing with your store…'
               : null,
           child: Container(
@@ -41,157 +46,158 @@ class OrdersView extends GetView<OrdersController> {
                     child: _OrdersFiltersHeader(controller: controller),
                   ),
                   Expanded(
-                    child: Obx(
-                      () {
-                        OrderService.to.orders.length;
-                        controller.searchQuery.value;
-                        controller.dateRange.value;
-                        final allOrders = controller.orders;
-                        final displayed = controller.displayedOrders;
-                        final loading = OrderService.to.isOrdersLoading.value &&
-                            allOrders.isEmpty;
+                    child: Obx(() {
+                      OrderService.to.orders.length;
+                      controller.searchQuery.value;
+                      controller.dateRange.value;
+                      controller.statusFilter.value;
+                      final allOrders = controller.orders;
+                      final displayed = controller.displayedOrders;
+                      final loading =
+                          OrderService.to.isOrdersLoading.value &&
+                          allOrders.isEmpty;
 
-                        Future<void> onRefresh() =>
-                            OrderService.to.refreshOrdersFromServer();
+                      Future<void> onRefresh() =>
+                          OrderService.to.refreshOrdersFromServer();
 
-                        if (loading) {
-                          return RefreshIndicator(
-                            color: AppColors.primary,
-                            onRefresh: onRefresh,
-                            child: ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: [
-                                SizedBox(
-                                  height:
-                                      MediaQuery.sizeOf(context).height * 0.55,
-                                  child: Center(
+                      if (loading) {
+                        return RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: onRefresh,
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.sizeOf(context).height * 0.55,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const CircularProgressIndicator(
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Loading orders...',
+                                        style: AppTextStyles.bodyMedium
+                                            .copyWith(
+                                              color: AppColors.textDark
+                                                  .withValues(alpha: 0.6),
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (allOrders.isEmpty) {
+                        return RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: onRefresh,
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.sizeOf(context).height * 0.55,
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: Text(
+                                      'No orders yet.\nNew orders will appear here.',
+                                      style: AppTextStyles.bodyMedium.copyWith(
+                                        color: AppColors.textDark.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (displayed.isEmpty) {
+                        return RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: onRefresh,
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.sizeOf(context).height * 0.55,
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(24),
                                     child: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        const CircularProgressIndicator(
-                                          color: AppColors.primary,
+                                        Icon(
+                                          Icons.search_off_rounded,
+                                          size: 48,
+                                          color: AppColors.textDark.withValues(
+                                            alpha: 0.35,
+                                          ),
                                         ),
-                                        const SizedBox(height: 16),
+                                        const SizedBox(height: 12),
                                         Text(
-                                          'Loading orders...',
+                                          'No orders match your filters',
+                                          style: AppTextStyles.bodyLarge
+                                              .copyWith(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Try another keyword, or adjust the date range.',
                                           style: AppTextStyles.bodyMedium
                                               .copyWith(
-                                            color: AppColors.textDark
-                                                .withValues(alpha: 0.6),
+                                                color: AppColors.textDark
+                                                    .withValues(alpha: 0.55),
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        FilledButton.tonal(
+                                          onPressed: controller.clearAllFilters,
+                                          child: const Text(
+                                            'Clear search & date',
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        if (allOrders.isEmpty) {
-                          return RefreshIndicator(
-                            color: AppColors.primary,
-                            onRefresh: onRefresh,
-                            child: ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: [
-                                SizedBox(
-                                  height:
-                                      MediaQuery.sizeOf(context).height * 0.55,
-                                  child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(24),
-                                      child: Text(
-                                        'No orders yet.\nNew orders will appear here.',
-                                        style: AppTextStyles.bodyMedium.copyWith(
-                                          color: AppColors.textDark
-                                              .withValues(alpha: 0.6),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        if (displayed.isEmpty) {
-                          return RefreshIndicator(
-                            color: AppColors.primary,
-                            onRefresh: onRefresh,
-                            child: ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: [
-                                SizedBox(
-                                  height:
-                                      MediaQuery.sizeOf(context).height * 0.55,
-                                  child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(24),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.search_off_rounded,
-                                            size: 48,
-                                            color: AppColors.textDark
-                                                .withValues(alpha: 0.35),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            'No orders match your filters',
-                                            style: AppTextStyles.bodyLarge
-                                                .copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Try another keyword, or adjust the date range.',
-                                            style: AppTextStyles.bodyMedium
-                                                .copyWith(
-                                              color: AppColors.textDark
-                                                  .withValues(alpha: 0.55),
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          FilledButton.tonal(
-                                            onPressed:
-                                                controller.clearAllFilters,
-                                            child: const Text(
-                                                'Clear search & date'),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return RefreshIndicator(
-                          color: AppColors.primary,
-                          onRefresh: onRefresh,
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                            itemCount: displayed.length,
-                            itemBuilder: (_, i) {
-                              return _OrderTile(order: displayed[i]);
-                            },
+                              ),
+                            ],
                           ),
                         );
-                      },
-                    ),
+                      }
+
+                      return RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: onRefresh,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          itemCount: displayed.length,
+                          itemBuilder: (_, i) {
+                            return _OrderTile(order: displayed[i]);
+                          },
+                        ),
+                      );
+                    }),
                   ),
                 ],
               ),
@@ -216,12 +222,10 @@ class _OrdersFiltersHeader extends StatelessWidget {
         TextField(
           controller: controller.searchController,
           textInputAction: TextInputAction.search,
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: Colors.black87,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(color: Colors.black87),
           cursorColor: AppColors.primary,
           decoration: InputDecoration(
-            hintText: 'Order ID, customer name, or email',
+            hintText: 'Order ID, name, email, or phone',
             hintStyle: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textDark.withValues(alpha: 0.45),
             ),
@@ -245,7 +249,10 @@ class _OrdersFiltersHeader extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
             ),
             suffixIcon: Obx(() {
               if (controller.searchQuery.value.isEmpty) {
@@ -284,7 +291,8 @@ class _OrdersFiltersHeader extends StatelessWidget {
             const SizedBox(width: 8),
             Obx(() {
               final hasFilter = controller.searchQuery.value.isNotEmpty ||
-                  controller.dateRange.value != null;
+                  controller.dateRange.value != null ||
+                  controller.statusFilter.value != null;
               if (!hasFilter) return const SizedBox.shrink();
               return TextButton(
                 onPressed: controller.clearAllFilters,
@@ -292,6 +300,56 @@ class _OrdersFiltersHeader extends StatelessWidget {
               );
             }),
           ],
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Obx(() {
+            final selected = controller.statusFilter.value;
+            return Row(
+              children: [
+                _StatusFilterChip(
+                  label: 'All',
+                  selected: selected == null,
+                  onTap: () => controller.setStatusFilter(null),
+                ),
+                const SizedBox(width: 8),
+                _StatusFilterChip(
+                  label: 'Pending',
+                  selected: selected == OrderStatus.pending,
+                  onTap: () =>
+                      controller.setStatusFilter(OrderStatus.pending),
+                ),
+                const SizedBox(width: 8),
+                _StatusFilterChip(
+                  label: 'Packed',
+                  selected: selected == OrderStatus.packed,
+                  onTap: () => controller.setStatusFilter(OrderStatus.packed),
+                ),
+                const SizedBox(width: 8),
+                _StatusFilterChip(
+                  label: 'Shipped',
+                  selected: selected == OrderStatus.shipped,
+                  onTap: () =>
+                      controller.setStatusFilter(OrderStatus.shipped),
+                ),
+                const SizedBox(width: 8),
+                _StatusFilterChip(
+                  label: 'Delivered',
+                  selected: selected == OrderStatus.delivered,
+                  onTap: () =>
+                      controller.setStatusFilter(OrderStatus.delivered),
+                ),
+                const SizedBox(width: 8),
+                _StatusFilterChip(
+                  label: 'Cancelled',
+                  selected: selected == OrderStatus.cancelled,
+                  onTap: () =>
+                      controller.setStatusFilter(OrderStatus.cancelled),
+                ),
+              ],
+            );
+          }),
         ),
         const SizedBox(height: 10),
         Container(
@@ -314,7 +372,7 @@ class _OrdersFiltersHeader extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Search: order ID, customer name, or email — partial text is fine. Use the date filter to show orders placed in that range.',
+                  'Search by order ID, name, email, or phone. Use status chips to focus pending vs delivered. Date filter limits by order date.',
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontSize: 11,
                     height: 1.35,
@@ -326,6 +384,43 @@ class _OrdersFiltersHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _StatusFilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _StatusFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: 0.12)
+          : Colors.white,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? AppColors.primary : AppColors.textDark,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -358,8 +453,11 @@ class _OrderTile extends GetView<OrdersController> {
                     color: AppColors.primary.withValues(alpha: 0.08),
                   ),
                 ),
-                child: const Icon(Icons.receipt_long_outlined,
-                    color: AppColors.primary, size: 22),
+                child: const Icon(
+                  Icons.receipt_long_outlined,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -368,17 +466,41 @@ class _OrderTile extends GetView<OrdersController> {
                   children: [
                     Text(
                       order.id,
-                      style: AppTextStyles.bodyLarge
-                          .copyWith(fontWeight: FontWeight.w600),
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       order.customerName,
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textDark.withValues(alpha: 0.7),
+                        color: AppColors.textDark.withValues(alpha: 0.75),
                         fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      order.customerEmail.isNotEmpty
+                          ? order.customerEmail
+                          : '—',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textDark.withValues(alpha: 0.55),
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (order.deliveryPhone.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        order.deliveryPhone,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textDark.withValues(alpha: 0.55),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       'PKR ${order.total.toStringAsFixed(0)} • ${order.items.length} item(s)',
@@ -386,6 +508,28 @@ class _OrderTile extends GetView<OrdersController> {
                         color: AppColors.textDark.withValues(alpha: 0.6),
                         fontSize: 11,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 12,
+                          color: AppColors.textDark.withValues(alpha: 0.45),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Placed ${formatOrderActionTime(order.createdAt)}',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textDark.withValues(alpha: 0.45),
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -436,29 +580,133 @@ class _OrderTile extends GetView<OrdersController> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    order.id,
-                    style: AppTextStyles.titleLarge,
-                  ),
-                  const SizedBox(height: 4),
+                  Text(order.id, style: AppTextStyles.titleLarge),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      Text(
-                        order.customerName,
-                        style: AppTextStyles.bodyMedium,
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 16,
+                        color: AppColors.textDark.withValues(alpha: 0.5),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '• ${order.customerEmail}',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color:
-                              AppColors.textDark.withValues(alpha: 0.6),
-                          fontSize: 11,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Placed ${formatOrderActionTime(order.createdAt)}',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textDark.withValues(alpha: 0.65),
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
+                  Text(
+                    order.customerName,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    order.customerEmail.isNotEmpty
+                        ? order.customerEmail
+                        : '—',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark.withValues(alpha: 0.75),
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (order.deliveryPhone.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.phone_outlined,
+                          size: 16,
+                          color: AppColors.textDark.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            order.deliveryPhone,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Delivery address',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    order.deliverySummaryLine.isNotEmpty
+                        ? order.deliverySummaryLine
+                        : (order.deliveryStreet.isNotEmpty
+                              ? order.deliveryStreet
+                              : '—'),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark.withValues(alpha: 0.75),
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (order.status == OrderStatus.cancelled &&
+                      (order.cancellationReason?.trim().isNotEmpty ??
+                          false)) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.danger.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cancellation reason',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.danger,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            order.cancellationReason!.trim(),
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontSize: 13,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (order.cancelledAt != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _fmtCancelled(order.cancelledAt!),
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                fontSize: 11,
+                                color: AppColors.textDark.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       _StatusChipSmall(status: order.status),
@@ -466,8 +714,7 @@ class _OrderTile extends GetView<OrdersController> {
                       Text(
                         order.isCod ? 'Cash on delivery' : 'Bank transfer',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color:
-                              AppColors.textDark.withValues(alpha: 0.6),
+                          color: AppColors.textDark.withValues(alpha: 0.6),
                           fontSize: 11,
                         ),
                       ),
@@ -493,8 +740,9 @@ class _OrderTile extends GetView<OrdersController> {
                   const SizedBox(height: 16),
                   Text(
                     'Payment confirmation',
-                    style: AppTextStyles.bodyLarge
-                        .copyWith(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -527,7 +775,10 @@ class _OrderTile extends GetView<OrdersController> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.check_circle_outline, size: 20),
+                              : const Icon(
+                                  Icons.check_circle_outline,
+                                  size: 20,
+                                ),
                           label: const Text('Confirm payment received'),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.success,
@@ -556,8 +807,9 @@ class _OrderTile extends GetView<OrdersController> {
                   const SizedBox(height: 16),
                   Text(
                     'Items',
-                    style: AppTextStyles.bodyLarge
-                        .copyWith(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   ...order.items.map(
@@ -572,8 +824,7 @@ class _OrderTile extends GetView<OrdersController> {
                         'Qty: ${i.quantity}',
                         style: AppTextStyles.bodyMedium.copyWith(
                           fontSize: 11,
-                          color: AppColors.textDark
-                              .withValues(alpha: 0.6),
+                          color: AppColors.textDark.withValues(alpha: 0.6),
                         ),
                       ),
                       trailing: Text(
@@ -588,10 +839,7 @@ class _OrderTile extends GetView<OrdersController> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Total',
-                        style: AppTextStyles.bodyMedium,
-                      ),
+                      Text('Total', style: AppTextStyles.bodyMedium),
                       Text(
                         'PKR ${order.total.toStringAsFixed(0)}',
                         style: AppTextStyles.titleLarge.copyWith(
@@ -603,13 +851,16 @@ class _OrderTile extends GetView<OrdersController> {
                   const SizedBox(height: 20),
                   Text(
                     'Update status',
-                    style: AppTextStyles.bodyLarge
-                        .copyWith(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
-                    children: OrderStatus.values.map((s) {
+                    children: OrderStatus.values
+                        .where((s) => s != OrderStatus.cancelled)
+                        .map((s) {
                       final isSelected = s == order.status;
                       return ChoiceChip(
                         label: Text(_statusLabel(s)),
@@ -622,6 +873,28 @@ class _OrderTile extends GetView<OrdersController> {
                       );
                     }).toList(),
                   ),
+                  if (order.status != OrderStatus.cancelled) ...[
+                    const SizedBox(height: 12),
+                    Obx(
+                      () => SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: controller.isCancellingOrder.value
+                              ? null
+                              : () => _promptCancelOrder(context, order),
+                          icon: const Icon(Icons.cancel_outlined, size: 20),
+                          label: const Text('Cancel order'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            side: BorderSide(
+                              color: AppColors.danger.withValues(alpha: 0.5),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
@@ -630,7 +903,128 @@ class _OrderTile extends GetView<OrdersController> {
       },
     );
   }
+
+  Future<void> _promptCancelOrder(BuildContext context, Order order) async {
+    final reasonCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel order'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'The customer will see this reason in the app and in order history. '
+                  'You must enter a reason — it cannot be empty.',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textDark.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: reasonCtrl,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: AppColors.textDark,
+                    height: 1.4,
+                  ),
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    labelText: 'Cancellation reason *',
+                    hintText: 'e.g. Item out of stock',
+                    alignLabelWithHint: true,
+                    filled: true,
+                    fillColor: Colors.white,
+                    labelStyle: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark.withValues(alpha: 0.75),
+                    ),
+                    floatingLabelStyle: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    hintStyle: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark.withValues(alpha: 0.38),
+                    ),
+                    errorStyle: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.danger,
+                      fontSize: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.grey.shade400),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.grey.shade400),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.5,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.danger),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.danger),
+                    ),
+                  ),
+                  maxLines: 4,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter a reason — the customer will read this.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Back'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              if (formKey.currentState?.validate() != true) return;
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Confirm cancel'),
+          ),
+        ],
+      ),
+    );
+    try {
+      if (ok == true) {
+        await controller.cancelOrderWithReason(order, reasonCtrl.text.trim());
+        if (context.mounted) Navigator.pop(context);
+      }
+    } finally {
+      reasonCtrl.dispose();
+    }
+  }
 }
+
+String _fmtCancelled(DateTime d) =>
+    'Cancelled ${d.day}/${d.month}/${d.year} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
 class _StatusChipSmall extends StatelessWidget {
   final OrderStatus status;
@@ -648,10 +1042,7 @@ class _StatusChipSmall extends StatelessWidget {
       ),
       child: Text(
         _statusLabel(status),
-        style: AppTextStyles.bodyMedium.copyWith(
-          color: fg,
-          fontSize: 10,
-        ),
+        style: AppTextStyles.bodyMedium.copyWith(color: fg, fontSize: 10),
       ),
     );
   }
@@ -676,10 +1067,7 @@ class _PaidChip extends StatelessWidget {
       ),
       child: Text(
         isPaid ? 'Paid' : 'Unpaid',
-        style: AppTextStyles.bodyMedium.copyWith(
-          color: fg,
-          fontSize: 10,
-        ),
+        style: AppTextStyles.bodyMedium.copyWith(color: fg, fontSize: 10),
       ),
     );
   }
@@ -703,30 +1091,14 @@ String _statusLabel(OrderStatus status) {
 (Color, Color) _colors(OrderStatus status) {
   switch (status) {
     case OrderStatus.pending:
-      return (
-        AppColors.secondary.withValues(alpha: 0.12),
-        AppColors.secondary
-      );
+      return (AppColors.secondary.withValues(alpha: 0.12), AppColors.secondary);
     case OrderStatus.packed:
-      return (
-        AppColors.primary.withValues(alpha: 0.12),
-        AppColors.primary
-      );
+      return (AppColors.primary.withValues(alpha: 0.12), AppColors.primary);
     case OrderStatus.shipped:
-      return (
-        AppColors.accent.withValues(alpha: 0.12),
-        AppColors.accent
-      );
+      return (AppColors.accent.withValues(alpha: 0.12), AppColors.accent);
     case OrderStatus.delivered:
-      return (
-        AppColors.success.withValues(alpha: 0.12),
-        AppColors.success
-      );
+      return (AppColors.success.withValues(alpha: 0.12), AppColors.success);
     case OrderStatus.cancelled:
-      return (
-        AppColors.danger.withValues(alpha: 0.12),
-        AppColors.danger
-      );
+      return (AppColors.danger.withValues(alpha: 0.12), AppColors.danger);
   }
 }
-

@@ -29,6 +29,7 @@ abstract class Routes {
   static const ADMIN_INVENTORY = _Paths.ADMIN_INVENTORY;
   static const ADMIN_ORDERS = _Paths.ADMIN_ORDERS;
   static const ADMIN_SETTINGS = _Paths.ADMIN_SETTINGS;
+  static const ADMIN_ADS_DISCOUNT = _Paths.ADMIN_ADS_DISCOUNT;
 }
 
 abstract class _Paths {
@@ -60,5 +61,6 @@ abstract class _Paths {
   static const ADMIN_INVENTORY = '/admin/inventory';
   static const ADMIN_ORDERS = '/admin/orders';
   static const ADMIN_SETTINGS = '/admin/settings';
+  static const ADMIN_ADS_DISCOUNT = '/admin/ads-discount';
 }
 

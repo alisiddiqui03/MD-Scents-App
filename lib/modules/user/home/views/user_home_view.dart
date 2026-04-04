@@ -377,26 +377,13 @@ class UserHomeView extends StatelessWidget {
         children: [
           Text('Special Offers', style: AppTextStyles.titleLarge),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _OfferBanner(
-                  title: 'Free Delivery',
-                  subtitle: 'On orders above\nPKR 3,000',
-                  icon: Icons.local_shipping_outlined,
-                  color: AppColors.success,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _OfferBanner(
-                  title: 'Gift Wrap',
-                  subtitle: 'Free on special\noccasions',
-                  icon: Icons.card_giftcard_outlined,
-                  color: AppColors.secondary,
-                ),
-              ),
-            ],
+          _OfferBanner(
+            title: 'Gift wrap (optional)',
+            subtitle:
+                'Available on request when you contact us about your order.',
+            icon: Icons.card_giftcard_outlined,
+            color: AppColors.secondary,
+            wide: true,
           ),
           const SizedBox(height: 12),
           _OfferBanner(

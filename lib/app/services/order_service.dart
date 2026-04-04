@@ -17,6 +17,8 @@ class OrderService extends GetxService {
 
   List<Order> get orders => _orders;
 
+  RxList<Order> get ordersRx => _orders;
+
   @override
   void onInit() {
     super.onInit();
@@ -28,16 +30,18 @@ class OrderService extends GetxService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .listen((QuerySnapshot<Map<String, dynamic>> snapshot) {
-      final list = snapshot.docs
-          .map((doc) => Order.fromMap(
-                doc.id,
-                doc.data(),
-                firestorePath: doc.reference.path,
-              ))
-          .toList();
-      _orders.assignAll(list);
-      isOrdersLoading.value = false;
-    });
+          final list = snapshot.docs
+              .map(
+                (doc) => Order.fromMap(
+                  doc.id,
+                  doc.data(),
+                  firestorePath: doc.reference.path,
+                ),
+              )
+              .toList();
+          _orders.assignAll(list);
+          isOrdersLoading.value = false;
+        });
   }
 
   /// One-shot fetch for admin pull-to-refresh (mirrors stream query).
@@ -47,11 +51,13 @@ class OrderService extends GetxService {
           .orderBy('createdAt', descending: true)
           .get(const GetOptions(source: Source.server));
       final list = snapshot.docs
-          .map((doc) => Order.fromMap(
-                doc.id,
-                doc.data(),
-                firestorePath: doc.reference.path,
-              ))
+          .map(
+            (doc) => Order.fromMap(
+              doc.id,
+              doc.data(),
+              firestorePath: doc.reference.path,
+            ),
+          )
           .toList();
       _orders.assignAll(list);
       isOrdersLoading.value = false;
@@ -92,19 +98,52 @@ class OrderService extends GetxService {
     await FirestoreService.instance.doc(path).update({'isPaid': isPaid});
   }
 
+  Future<void> cancelOrderWithReason(Order order, String reason) async {
+    final path = order.firestorePath;
+    if (path == null) {
+      throw StateError('Order path missing');
+    }
+    final trimmed = reason.trim();
+    if (trimmed.isEmpty) {
+      throw StateError('Cancellation reason is required');
+    }
+    if (order.status == OrderStatus.cancelled) {
+      throw StateError('Order is already cancelled');
+    }
+    await FirestoreService.instance.doc(path).update({
+      'status': OrderStatus.cancelled.name,
+      'cancellationReason': trimmed,
+      'cancelledAt': FieldValue.serverTimestamp(),
+      'cancellationUnreadForUser': true,
+    });
+  }
+
+  Future<void> markCancellationNoticesReadForUser(String uid) async {
+    final snap = await FirestoreService.usersOrdersRef(uid)
+        .where('cancellationUnreadForUser', isEqualTo: true)
+        .get();
+    if (snap.docs.isEmpty) return;
+    final batch = FirestoreService.instance.batch();
+    for (final d in snap.docs) {
+      batch.update(d.reference, {'cancellationUnreadForUser': false});
+    }
+    await batch.commit();
+  }
+
   /// Stream of orders for current user (users/{uid}/orders).
   Stream<List<Order>> userOrdersStream(String uid) {
     return FirestoreService.usersOrdersRef(uid)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Order.fromMap(doc.id, doc.data()))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => Order.fromMap(doc.id, doc.data()))
+              .toList(),
+        );
   }
 
   // Simple aggregates for dashboard
-  double get totalRevenue =>
-      orders.fold(0, (sum, o) => sum + o.total);
+  double get totalRevenue => orders.fold(0, (sum, o) => sum + o.total);
 
   int get totalOrders => orders.length;
 
@@ -127,4 +166,3 @@ class OrderService extends GetxService {
 
   int get paidOrdersCount => orders.where((o) => o.isPaid).length;
 }
-

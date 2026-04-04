@@ -68,6 +68,7 @@ class AllProductsController extends GetxController {
             (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
         break;
       case AllProductsSort.newest:
+        list.sort(ProductService.compareCatalogNewestFirst);
         break;
     }
 

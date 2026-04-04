@@ -40,18 +40,16 @@ class DiscountView extends GetView<DiscountController> {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SafeArea(
-              top: false,
-              bottom: true,
-              child: RefreshIndicator(
-                color: AppColors.primary,
-                onRefresh: () => ProductService.to.refreshCatalogFromServer(),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () => ProductService.to.refreshCatalogFromServer(),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -68,9 +66,9 @@ class DiscountView extends GetView<DiscountController> {
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

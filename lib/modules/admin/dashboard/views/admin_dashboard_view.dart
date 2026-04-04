@@ -7,6 +7,7 @@ import '../../../../app/services/order_service.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/routes/app_pages.dart';
 
 class AdminDashboardView extends GetView<AdminDashboardController> {
   const AdminDashboardView({super.key});
@@ -34,6 +35,8 @@ class AdminDashboardView extends GetView<AdminDashboardController> {
                     children: [
                       const SizedBox(height: 12),
                       _KpiRow(controller: controller),
+                      const SizedBox(height: 16),
+                      _AdsDiscountEntryCard(),
                       const SizedBox(height: 20),
                       _StatusSummary(controller: controller),
                       const SizedBox(height: 20),
@@ -45,6 +48,84 @@ class AdminDashboardView extends GetView<AdminDashboardController> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Admin: opens ads flow + user discount monitor (same as Profile → Ads & user discounts).
+class _AdsDiscountEntryCard extends StatelessWidget {
+  const _AdsDiscountEntryCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Get.toNamed(Routes.ADMIN_ADS_DISCOUNT),
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.secondary.withValues(alpha: 0.28),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.campaign_outlined,
+                    color: AppColors.secondary,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ads & user discounts',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ad flow rules & user discount monitor',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textDark.withValues(alpha: 0.55),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: AppColors.textDark.withValues(alpha: 0.35),
+                ),
+              ],
+            ),
           ),
         ),
       ),

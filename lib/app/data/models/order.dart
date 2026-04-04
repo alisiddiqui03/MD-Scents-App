@@ -24,11 +24,7 @@ class OrderItem {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'productName': productName,
-      'quantity': quantity,
-      'price': price,
-    };
+    return {'productName': productName, 'quantity': quantity, 'price': price};
   }
 }
 
@@ -44,8 +40,19 @@ class Order {
   final bool isPaid;
   final String? paymentReceiptUrl;
   final List<OrderItem> items;
+
   /// Full Firestore path (users/uid/orders/docId) for admin updateStatus
   final String? firestorePath;
+
+  /// Delivery contact & address (required for new orders).
+  final String deliveryPhone;
+  final String deliveryStreet;
+  final String deliveryCity;
+  final String deliveryPostalCode;
+
+  final String? cancellationReason;
+  final DateTime? cancelledAt;
+  final bool cancellationUnreadForUser;
 
   const Order({
     required this.id,
@@ -60,7 +67,23 @@ class Order {
     this.paymentReceiptUrl,
     required this.items,
     this.firestorePath,
+    this.deliveryPhone = '',
+    this.deliveryStreet = '',
+    this.deliveryCity = '',
+    this.deliveryPostalCode = '',
+    this.cancellationReason,
+    this.cancelledAt,
+    this.cancellationUnreadForUser = false,
   });
+
+  String get deliverySummaryLine {
+    final parts = <String>[
+      if (deliveryStreet.trim().isNotEmpty) deliveryStreet.trim(),
+      if (deliveryCity.trim().isNotEmpty) deliveryCity.trim(),
+      if (deliveryPostalCode.trim().isNotEmpty) deliveryPostalCode.trim(),
+    ];
+    return parts.join(', ');
+  }
 
   Order copyWith({
     OrderStatus? status,
@@ -80,15 +103,29 @@ class Order {
       paymentReceiptUrl: paymentReceiptUrl ?? this.paymentReceiptUrl,
       items: items,
       firestorePath: firestorePath,
+      deliveryPhone: deliveryPhone,
+      deliveryStreet: deliveryStreet,
+      deliveryCity: deliveryCity,
+      deliveryPostalCode: deliveryPostalCode,
+      cancellationReason: cancellationReason,
+      cancelledAt: cancelledAt,
+      cancellationUnreadForUser: cancellationUnreadForUser,
     );
   }
 
-  factory Order.fromMap(String id, Map<String, dynamic> data,
-      {String? firestorePath}) {
+  factory Order.fromMap(
+    String id,
+    Map<String, dynamic> data, {
+    String? firestorePath,
+  }) {
     final itemsData = (data['items'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>()
         .map(OrderItem.fromMap)
         .toList();
+
+    final cancelledTs = data['cancelledAt'];
+    DateTime? cancelledAt;
+    if (cancelledTs is Timestamp) cancelledAt = cancelledTs.toDate();
 
     return Order(
       id: id,
@@ -96,7 +133,8 @@ class Order {
       customerName: data['customerName'] as String? ?? '',
       customerEmail: data['customerEmail'] as String? ?? '',
       total: (data['total'] as num?)?.toDouble() ?? 0,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
+      createdAt:
+          (data['createdAt'] as Timestamp?)?.toDate() ??
           DateTime.fromMillisecondsSinceEpoch(0),
       status: _statusFromString(data['status'] as String?),
       isCod: data['isCod'] as bool? ?? false,
@@ -104,6 +142,14 @@ class Order {
       paymentReceiptUrl: data['paymentReceiptUrl'] as String?,
       items: itemsData,
       firestorePath: firestorePath,
+      deliveryPhone: data['deliveryPhone'] as String? ?? '',
+      deliveryStreet: data['deliveryStreet'] as String? ?? '',
+      deliveryCity: data['deliveryCity'] as String? ?? '',
+      deliveryPostalCode: data['deliveryPostalCode'] as String? ?? '',
+      cancellationReason: data['cancellationReason'] as String?,
+      cancelledAt: cancelledAt,
+      cancellationUnreadForUser:
+          data['cancellationUnreadForUser'] as bool? ?? false,
     );
   }
 
@@ -118,8 +164,19 @@ class Order {
       'isPaid': isPaid,
       'paymentReceiptUrl': paymentReceiptUrl,
       'items': items.map((e) => e.toMap()).toList(),
+      'deliveryPhone': deliveryPhone,
+      'deliveryStreet': deliveryStreet,
+      'deliveryCity': deliveryCity,
+      'deliveryPostalCode': deliveryPostalCode,
+      'cancellationUnreadForUser': cancellationUnreadForUser,
     };
     if (userId != null) map['userId'] = userId;
+    if (cancellationReason != null) {
+      map['cancellationReason'] = cancellationReason;
+    }
+    if (cancelledAt != null) {
+      map['cancelledAt'] = Timestamp.fromDate(cancelledAt!);
+    }
     return map;
   }
 }
@@ -140,4 +197,3 @@ OrderStatus _statusFromString(String? value) {
       return OrderStatus.pending;
   }
 }
-

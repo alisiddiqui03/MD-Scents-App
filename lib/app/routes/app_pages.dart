@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../widgets/app_branded_loading.dart';
 import 'middleware/role_middleware.dart';
 import '../../modules/user/auth/bindings/auth_binding.dart';
 import '../../modules/user/auth/views/auth_view.dart';
@@ -19,8 +19,8 @@ import '../../modules/user/discount/views/discount_view.dart';
 import '../../modules/user/profile/bindings/profile_binding.dart';
 import '../../modules/user/profile/views/profile_view.dart';
 
-import '../../modules/user/orders/bindings/user_orders_binding.dart';
 import '../../modules/user/orders/views/orders_view.dart' as user_orders;
+import '../../modules/user/orders/bindings/user_orders_binding.dart';
 import '../../modules/user/order_confirm/views/order_confirm_view.dart';
 import '../../modules/user/wishlist/bindings/wishlist_binding.dart';
 import '../../modules/user/wishlist/views/wishlist_view.dart';
@@ -43,6 +43,8 @@ import '../../modules/admin/orders/bindings/orders_binding.dart';
 import '../../modules/admin/orders/views/orders_view.dart';
 import '../../modules/admin/settings/bindings/admin_settings_binding.dart';
 import '../../modules/admin/settings/views/admin_settings_view.dart';
+import '../../modules/admin/ads_discount/bindings/admin_ads_discount_binding.dart';
+import '../../modules/admin/ads_discount/views/admin_ads_discount_view.dart';
 
 part 'app_routes.dart';
 
@@ -55,9 +57,7 @@ class AppPages {
     // Root route resolves to a concrete page via middleware.
     GetPage(
       name: _Paths.ROOT,
-      page: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      page: () => const AppBrandedLoading(),
       middlewares: [RoleMiddleware()],
     ),
 
@@ -166,6 +166,10 @@ class AppPages {
       page: () => const AdminSettingsView(),
       binding: AdminSettingsBinding(),
     ),
+    GetPage(
+      name: _Paths.ADMIN_ADS_DISCOUNT,
+      page: () => const AdminAdsDiscountView(),
+      binding: AdminAdsDiscountBinding(),
+    ),
   ];
 }
-

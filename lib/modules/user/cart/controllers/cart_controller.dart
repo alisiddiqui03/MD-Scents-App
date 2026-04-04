@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/services/address_service.dart';
 import '../../../../app/services/firestore_service.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/routes/app_pages.dart';
@@ -12,12 +13,18 @@ import '../../../../app/services/auth_service.dart';
 import '../../../../app/services/cloudinary_service.dart';
 import '../../../../app/services/discount_service.dart';
 import '../../../../app/services/product_service.dart';
+import '../../../../app/data/models/delivery_address.dart';
 import '../../../../app/data/models/order.dart';
 import '../../../../app/data/models/product.dart';
+import '../widgets/delivery_address_picker_sheet.dart';
+
+/// COD is only allowed when order total is strictly below this (PKR).
+const double kCodMaxPkr = 10000;
 
 class CartItem {
   final String id;
   final String name;
+
   /// Effective unit price (after product + global discounts) — updated when store/product changes.
   double unitPrice;
   final String imageUrl;
@@ -50,6 +57,21 @@ class CartController extends GetxController {
 
   late final Worker _priceSyncGlobal;
   late final Worker _priceSyncProducts;
+  late final Worker _itemsDeliveryWorker;
+  late final Worker _discountWorker;
+  late final Worker _authWorker;
+
+  /// Bumps so checkout UI can react to delivery field edits.
+  final deliveryInputVersion = 0.obs;
+
+  /// Delivery fields (phone + address required to place order).
+  final deliveryPhoneController = TextEditingController();
+  final deliveryStreetController = TextEditingController();
+  final deliveryCityController = TextEditingController();
+  final deliveryPostalController = TextEditingController();
+
+  /// One silent prefill per cart fill (empty → has items again) — no bottom sheet.
+  bool _didSilentPrefillThisFill = false;
 
   @override
   void onInit() {
@@ -62,13 +84,140 @@ class CartController extends GetxController {
       _productService.productsVersion,
       (_) => _syncCartUnitPrices(),
     );
+    _itemsDeliveryWorker = ever(items, (_) {
+      if (items.isEmpty) {
+        _didSilentPrefillThisFill = false;
+        return;
+      }
+      if (_didSilentPrefillThisFill) return;
+      Future.microtask(_silentPrefillDeliveryFromFirestore);
+    });
+    _authWorker = ever(AuthService.to.currentUser, (_) {
+      if (items.isEmpty || _didSilentPrefillThisFill) return;
+      Future.microtask(_silentPrefillDeliveryFromFirestore);
+    });
+    _discountWorker = ever(
+      _discountService.currentDiscountPercent,
+      (_) => _enforceCodRuleFromCartChange(),
+    );
+  }
+
+  void notifyDeliveryChanged() => deliveryInputVersion.value++;
+
+  /// Prefills default saved address only — no sheet. Address picker is on cart via "Saved / new".
+  Future<void> _silentPrefillDeliveryFromFirestore() async {
+    final uid = AuthService.to.currentUser.value?.uid;
+    if (uid == null || items.isEmpty) return;
+
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    final addresses = await AddressService.to.fetchAddressesOnce(uid);
+    _applyRecommendedDelivery(addresses);
+    notifyDeliveryChanged();
+    if (items.isNotEmpty) _didSilentPrefillThisFill = true;
   }
 
   @override
   void onClose() {
     _priceSyncGlobal.dispose();
     _priceSyncProducts.dispose();
+    _itemsDeliveryWorker.dispose();
+    _discountWorker.dispose();
+    _authWorker.dispose();
+    deliveryPhoneController.dispose();
+    deliveryStreetController.dispose();
+    deliveryCityController.dispose();
+    deliveryPostalController.dispose();
     super.onClose();
+  }
+
+  void _clearDeliveryFields() {
+    deliveryPhoneController.clear();
+    deliveryStreetController.clear();
+    deliveryCityController.clear();
+    deliveryPostalController.clear();
+  }
+
+  void _applyFromSaved(DeliveryAddress a) {
+    deliveryPhoneController.text = a.phone;
+    deliveryStreetController.text = a.street;
+    deliveryCityController.text = a.city;
+    deliveryPostalController.text = a.postalCode;
+  }
+
+  /// Prefill from Firestore `users/{uid}/addresses` — default flag, else first.
+  void _applyRecommendedDelivery(List<DeliveryAddress> addresses) {
+    if (addresses.isNotEmpty) {
+      final def = addresses.firstWhere(
+        (a) => a.isDefault,
+        orElse: () => addresses.first,
+      );
+      _applyFromSaved(def);
+      return;
+    }
+    _clearDeliveryFields();
+  }
+
+  int _detectCurrentOptionIndex(List<DeliveryAddress> addresses) {
+    final p = deliveryPhoneController.text.trim();
+    final st = deliveryStreetController.text.trim();
+    for (var i = 0; i < addresses.length; i++) {
+      final a = addresses[i];
+      if (p == a.phone.trim() && st == a.street.trim()) {
+        return i;
+      }
+    }
+    return addresses.length;
+  }
+
+  Future<void> _showDeliveryAddressSheet({
+    required List<DeliveryAddress> addresses,
+  }) async {
+    final initialIndex = _detectCurrentOptionIndex(addresses);
+    final ctx = Get.context ?? Get.key.currentContext;
+    if (ctx == null) return;
+
+    await showModalBottomSheet<void>(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => DeliveryAddressPickerSheet(
+        savedAddresses: addresses,
+        initialIndex: initialIndex,
+        onPickSaved: _applyFromSaved,
+        onPickNew: _clearDeliveryFields,
+      ),
+    );
+    notifyDeliveryChanged();
+  }
+
+  /// Opens the address picker from cart only (Saved / new).
+  Future<void> openDeliveryAddressPicker() async {
+    final uid = AuthService.to.currentUser.value?.uid;
+    if (uid == null) {
+      Get.snackbar(
+        'Sign in required',
+        'Sign in to use saved addresses from your account.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+      );
+      return;
+    }
+
+    final addresses = await AddressService.to.fetchAddressesOnce(uid);
+
+    await _showDeliveryAddressSheet(addresses: addresses);
+  }
+
+  void _enforceCodRuleFromCartChange() {
+    if (selectedPayment.value != PaymentMethod.cod) return;
+    if (total < kCodMaxPkr) return;
+    selectedPayment.value = PaymentMethod.bankTransfer;
   }
 
   void _syncCartUnitPrices() {
@@ -79,6 +228,7 @@ class CartController extends GetxController {
       }
     }
     items.refresh();
+    _enforceCodRuleFromCartChange();
   }
 
   double get subtotal =>
@@ -90,6 +240,25 @@ class CartController extends GetxController {
   double get userDiscountAmount => subtotal * (userDiscountPercent / 100);
 
   double get total => (subtotal - userDiscountAmount).clamp(0, double.infinity);
+
+  /// Place Order only when cart has items, user is signed in, delivery is filled,
+  /// COD is valid for total, and bank transfer has an uploaded receipt URL.
+  bool get isReadyToPlaceOrder {
+    if (isPlacing.value) return false;
+    if (AuthService.to.currentUser.value == null) return false;
+    if (items.isEmpty) return false;
+    final phone = deliveryPhoneController.text.trim();
+    final street = deliveryStreetController.text.trim();
+    if (phone.isEmpty || street.isEmpty) return false;
+    if (selectedPayment.value == PaymentMethod.cod && total >= kCodMaxPkr) {
+      return false;
+    }
+    if (selectedPayment.value == PaymentMethod.bankTransfer) {
+      if (!receiptUploaded.value) return false;
+      if (receiptUrl.value.trim().isEmpty) return false;
+    }
+    return true;
+  }
 
   /// Sum of list prices × qty (before any discount).
   double get invoiceGrossSubtotal {
@@ -127,8 +296,7 @@ class CartController extends GetxController {
     return sum;
   }
 
-  int get totalQuantity =>
-      items.fold(0, (sum, item) => sum + item.qty.value);
+  int get totalQuantity => items.fold(0, (sum, item) => sum + item.qty.value);
 
   void addToCart(ProductItem product, {int qty = 1}) {
     if (qty < 1) return;
@@ -205,6 +373,7 @@ class CartController extends GetxController {
         icon: const Icon(Icons.check_circle_outline, color: Colors.white),
       );
     }
+    _enforceCodRuleFromCartChange();
   }
 
   void incrementQty(String id) {
@@ -226,16 +395,29 @@ class CartController extends GetxController {
       return;
     }
     item.qty.value++;
+    _enforceCodRuleFromCartChange();
   }
 
   void decrementQty(String id) {
     final item = items.firstWhereOrNull((i) => i.id == id);
-    if (item != null && item.qty.value > 1) item.qty.value--;
+    if (item != null && item.qty.value > 1) {
+      item.qty.value--;
+      _enforceCodRuleFromCartChange();
+    }
   }
 
-  void removeItem(String id) => items.removeWhere((i) => i.id == id);
+  void removeItem(String id) {
+    items.removeWhere((i) => i.id == id);
+    _enforceCodRuleFromCartChange();
+  }
 
-  void selectPayment(PaymentMethod method) => selectedPayment.value = method;
+  void selectPayment(PaymentMethod method) {
+    if (method == PaymentMethod.cod && total >= kCodMaxPkr) {
+      selectedPayment.value = PaymentMethod.bankTransfer;
+      return;
+    }
+    selectedPayment.value = method;
+  }
 
   Future<void> uploadReceipt() async {
     if (isUploadingReceipt.value) return;
@@ -315,6 +497,27 @@ class CartController extends GetxController {
       return;
     }
 
+    final phone = deliveryPhoneController.text.trim();
+    final street = deliveryStreetController.text.trim();
+    if (phone.isEmpty || street.isEmpty) {
+      Get.snackbar(
+        'Delivery details required',
+        'Please enter your phone number and delivery address.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
+      );
+      return;
+    }
+
+    final wantsCod = selectedPayment.value == PaymentMethod.cod;
+    if (wantsCod && total >= kCodMaxPkr) {
+      return;
+    }
+
     isPlacing.value = true;
 
     try {
@@ -324,22 +527,26 @@ class CartController extends GetxController {
       final userSavBeforeOrder = userDiscountAmount;
 
       final orderItems = items
-          .map((i) => OrderItem(
-                productName: i.name,
-                quantity: i.qty.value,
-                price: i.unitPrice,
-              ))
+          .map(
+            (i) => OrderItem(
+              productName: i.name,
+              quantity: i.qty.value,
+              price: i.unitPrice,
+            ),
+          )
           .toList();
 
-      final isCod = selectedPayment.value == PaymentMethod.cod;
+      final isCod = wantsCod;
       final orderTotalVal = total;
       final receipt = receiptUrl.value.trim();
+      final city = deliveryCityController.text.trim();
+      final postal = deliveryPostalController.text.trim();
       // COD: paid on delivery → isPaid false until you confirm in admin.
       // Bank: receipt uploaded → isPaid true (payment proof received).
       final isPaid = !isCod && receipt.isNotEmpty;
 
-      final orderRef =
-          FirestoreService.usersOrdersRef(user.uid).doc();
+      final orderRef = FirestoreService.usersOrdersRef(user.uid).doc();
+      final placedAt = DateTime.now();
 
       final order = Order(
         id: orderRef.id,
@@ -347,12 +554,16 @@ class CartController extends GetxController {
         customerName: user.displayName ?? user.email ?? 'Customer',
         customerEmail: user.email ?? '',
         total: orderTotalVal,
-        createdAt: DateTime.now(),
+        createdAt: placedAt,
         status: OrderStatus.pending,
         isCod: isCod,
         isPaid: isPaid,
         paymentReceiptUrl: isCod ? null : (receipt.isEmpty ? null : receipt),
         items: orderItems,
+        deliveryPhone: phone,
+        deliveryStreet: street,
+        deliveryCity: city,
+        deliveryPostalCode: postal,
       );
 
       await FirestoreService.instance.runTransaction((txn) async {
@@ -360,9 +571,7 @@ class CartController extends GetxController {
           final pref = FirestoreService.productsCollection.doc(item.id);
           final snap = await txn.get(pref);
           if (!snap.exists) {
-            throw StateError(
-              'Product "${item.name}" is no longer available.',
-            );
+            throw StateError('Product "${item.name}" is no longer available.');
           }
           final stock = (snap.data()?['stock'] as num?)?.toInt() ?? 0;
           if (stock < item.qty.value) {
@@ -372,13 +581,19 @@ class CartController extends GetxController {
           }
         }
         for (final item in items) {
-          txn.update(
-            FirestoreService.productsCollection.doc(item.id),
-            {'stock': FieldValue.increment(-item.qty.value)},
-          );
+          txn.update(FirestoreService.productsCollection.doc(item.id), {
+            'stock': FieldValue.increment(-item.qty.value),
+          });
         }
         txn.set(orderRef, order.toMap());
       });
+
+      await FirestoreService.usersCollection.doc(user.uid).set({
+        'lastDeliveryPhone': phone,
+        'lastDeliveryStreet': street,
+        'lastDeliveryCity': city,
+        'lastDeliveryPostalCode': postal,
+      }, SetOptions(merge: true));
 
       final orderId = orderRef.id;
 
@@ -403,6 +618,7 @@ class CartController extends GetxController {
           'total': orderTotal,
           'isCod': isCod,
           'itemCount': count,
+          'placedAt': placedAt,
           'grossSubtotal': grossBeforeOrder,
           'productSavings': prodSavBeforeOrder,
           'globalSavings': globalSavBeforeOrder,

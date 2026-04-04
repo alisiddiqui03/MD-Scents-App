@@ -17,7 +17,10 @@ class AuthController extends GetxController {
   final confirmPasswordController = TextEditingController();
 
   // ── Observables ───────────────────────────────────────────────────────────
-  final isLoading = false.obs;
+  /// Email / password / reset flows — spinner on primary button only.
+  final isLoadingEmail = false.obs;
+  /// Google sign-in — spinner on Google button only.
+  final isLoadingGoogle = false.obs;
   final obscurePassword = true.obs;
   final obscureConfirm = true.obs;
   final activeTab = AuthTab.login.obs;
@@ -68,7 +71,7 @@ class AuthController extends GetxController {
     }
 
     try {
-      isLoading.value = true;
+      isLoadingEmail.value = true;
       await _authService.signInWithEmail(email, password);
 
       if (_authService.isAdmin) {
@@ -81,7 +84,7 @@ class AuthController extends GetxController {
     } catch (e) {
       _snack('Sign In Failed', userFacingAuthError(e));
     } finally {
-      isLoading.value = false;
+      isLoadingEmail.value = false;
     }
   }
 
@@ -110,7 +113,7 @@ class AuthController extends GetxController {
     }
 
     try {
-      isLoading.value = true;
+      isLoadingEmail.value = true;
       await _authService.registerWithEmail(
         email: email,
         password: password,
@@ -122,7 +125,7 @@ class AuthController extends GetxController {
     } catch (e) {
       _snack('Sign Up Failed', userFacingAuthError(e));
     } finally {
-      isLoading.value = false;
+      isLoadingEmail.value = false;
     }
   }
 
@@ -136,7 +139,7 @@ class AuthController extends GetxController {
     }
 
     try {
-      isLoading.value = true;
+      isLoadingEmail.value = true;
       await _authService.sendPasswordResetEmail(email);
       Get.snackbar(
         'Check your email',
@@ -155,7 +158,7 @@ class AuthController extends GetxController {
     } catch (e) {
       _snack('Could not send reset email', userFacingAuthError(e));
     } finally {
-      isLoading.value = false;
+      isLoadingEmail.value = false;
     }
   }
 
@@ -175,7 +178,7 @@ class AuthController extends GetxController {
   // ── Google Sign-In ────────────────────────────────────────────────────────
   Future<void> loginWithGoogle() async {
     try {
-      isLoading.value = true;
+      isLoadingGoogle.value = true;
       await _authService.signInWithGoogle();
 
       if (_authService.isAdmin) {
@@ -188,14 +191,14 @@ class AuthController extends GetxController {
     } catch (e) {
       _snack('Google Sign-In Failed', userFacingAuthError(e));
     } finally {
-      isLoading.value = false;
+      isLoadingGoogle.value = false;
     }
   }
 
   // ── Google Sign-Up ────────────────────────────────────────────────────────
   Future<void> signupWithGoogle() async {
     try {
-      isLoading.value = true;
+      isLoadingGoogle.value = true;
       await _authService.signInWithGoogle();
 
       if (_authService.isAdmin) {
@@ -212,7 +215,7 @@ class AuthController extends GetxController {
     } catch (e) {
       _snack('Google Sign-Up Failed', userFacingAuthError(e));
     } finally {
-      isLoading.value = false;
+      isLoadingGoogle.value = false;
     }
   }
 

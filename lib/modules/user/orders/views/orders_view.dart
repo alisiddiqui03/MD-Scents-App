@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controllers/user_orders_controller.dart';
 import '../../../../app/data/models/order.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/utils/order_action_time.dart';
 import '../../../../app/theme/app_text_styles.dart';
 
 class OrdersView extends GetView<UserOrdersController> {
@@ -17,9 +18,17 @@ class OrdersView extends GetView<UserOrdersController> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: AppColors.textDark, size: 18),
-          onPressed: () => Get.back(),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.textDark,
+            size: 18,
+          ),
+          onPressed: () async {
+            if (Get.isSnackbarOpen) {
+              await Get.closeCurrentSnackbar();
+            }
+            Get.back();
+          },
         ),
         title: Text(
           'MY ORDERS',
@@ -35,8 +44,10 @@ class OrdersView extends GetView<UserOrdersController> {
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(Icons.filter_list_rounded,
-                      color: AppColors.textDark),
+                  const Icon(
+                    Icons.filter_list_rounded,
+                    color: AppColors.textDark,
+                  ),
                   if (hasFilter)
                     Positioned(
                       right: -2,
@@ -56,86 +67,84 @@ class OrdersView extends GetView<UserOrdersController> {
           }),
         ],
       ),
-      body: Obx(
-        () {
-          Future<void> onRefresh() => controller.refreshOrders();
+      body: Obx(() {
+        Future<void> onRefresh() => controller.refreshOrders();
 
-          if (controller.isLoading.value) {
-            return RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: onRefresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(
-                    height: MediaQuery.sizeOf(context).height * 0.45,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                ],
-              ),
-            );
-          }
-          if (!controller.hasOrders) {
-            return RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: onRefresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(
-                    height: MediaQuery.sizeOf(context).height * 0.65,
-                    child: _buildEmpty(all: true),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final display = controller.displayOrders;
-          if (display.isEmpty) {
-            return Column(
+        if (controller.isLoading.value) {
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                _buildStatusChips(),
-                Expanded(
-                  child: RefreshIndicator(
-                    color: AppColors.primary,
-                    onRefresh: onRefresh,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.sizeOf(context).height * 0.45,
-                          child: _buildEmpty(all: false),
-                        ),
-                      ],
-                    ),
-                  ),
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.45,
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
               ],
-            );
-          }
+            ),
+          );
+        }
+        if (!controller.hasOrders) {
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.65,
+                  child: _buildEmpty(all: true),
+                ),
+              ],
+            ),
+          );
+        }
 
+        final display = controller.displayOrders;
+        if (display.isEmpty) {
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildStatusChips(),
               Expanded(
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: onRefresh,
-                  child: ListView.separated(
+                  child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    itemCount: display.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _OrderCard(order: display[i]),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.sizeOf(context).height * 0.45,
+                        child: _buildEmpty(all: false),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           );
-        },
-      ),
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildStatusChips(),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: onRefresh,
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  itemCount: display.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, i) => _OrderCard(order: display[i]),
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -228,30 +237,10 @@ class OrdersView extends GetView<UserOrdersController> {
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _sheetTile(
-                          ctx,
-                          'All orders',
-                          null,
-                          sel,
-                        ),
-                        _sheetTile(
-                          ctx,
-                          'Processing',
-                          OrderStatus.pending,
-                          sel,
-                        ),
-                        _sheetTile(
-                          ctx,
-                          'Packed',
-                          OrderStatus.packed,
-                          sel,
-                        ),
-                        _sheetTile(
-                          ctx,
-                          'Shipped',
-                          OrderStatus.shipped,
-                          sel,
-                        ),
+                        _sheetTile(ctx, 'All orders', null, sel),
+                        _sheetTile(ctx, 'Processing', OrderStatus.pending, sel),
+                        _sheetTile(ctx, 'Packed', OrderStatus.packed, sel),
+                        _sheetTile(ctx, 'Shipped', OrderStatus.shipped, sel),
                         _sheetTile(
                           ctx,
                           'Delivered',
@@ -309,8 +298,11 @@ class OrdersView extends GetView<UserOrdersController> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.shopping_bag_outlined,
-                size: 64, color: AppColors.textDark.withValues(alpha: 0.2)),
+            Icon(
+              Icons.shopping_bag_outlined,
+              size: 64,
+              color: AppColors.textDark.withValues(alpha: 0.2),
+            ),
             const SizedBox(height: 16),
             Text(
               all ? 'No orders yet' : 'No orders in this filter',
@@ -428,93 +420,118 @@ class _OrderCard extends StatelessWidget {
     }
   }
 
-  String get _dateStr {
-    final d = order.createdAt;
-    return '${d.day} ${_month(d.month)} ${d.year}';
-  }
+  static TextStyle _labelStyle() => AppTextStyles.bodyMedium.copyWith(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.4,
+        color: AppColors.textDark.withValues(alpha: 0.45),
+      );
 
-  String _month(int m) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return months[m - 1];
-  }
+  static TextStyle _valueStyle() => AppTextStyles.bodyMedium.copyWith(
+        fontSize: 14,
+        height: 1.35,
+        color: AppColors.textDark,
+        fontWeight: FontWeight.w600,
+      );
 
   @override
   Widget build(BuildContext context) {
+    final displayId =
+        '#MD-${order.id.length > 6 ? order.id.substring(0, 6) : order.id.toUpperCase()}';
+    final name = order.customerName.trim();
+    final email = order.customerEmail.trim();
+    final itemCount = order.items.fold<int>(0, (a, i) => a + i.quantity);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Header: order id + status ─────────────────────────────────────
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
             decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.08),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              color: _statusColor.withValues(alpha: 0.09),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(15),
+              ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 4,
                       ),
-                      child: Icon(
-                        Icons.receipt_long_outlined,
-                        size: 18,
-                        color: AppColors.primary,
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.receipt_long_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ORDER ID',
+                        style: _labelStyle(),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '#MD-${order.id.length > 6 ? order.id.substring(0, 6) : order.id.toUpperCase()}',
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
-                        letterSpacing: 0.3,
+                      const SizedBox(height: 2),
+                      Text(
+                        displayId,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                          fontSize: 16,
+                          letterSpacing: 0.2,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: _statusColor.withValues(alpha: 0.35),
+                      color: _statusColor.withValues(alpha: 0.4),
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(_statusIcon, color: _statusColor, size: 15),
-                      const SizedBox(width: 5),
+                      Icon(_statusIcon, color: _statusColor, size: 16),
+                      const SizedBox(width: 6),
                       Text(
                         _statusLabel,
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: _statusColor,
                           fontWeight: FontWeight.w700,
-                          fontSize: 11,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -523,65 +540,203 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
           ),
+
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Contact ─────────────────────────────────────────────────
+                Text('NAME', style: _labelStyle()),
+                const SizedBox(height: 4),
+                Text(
+                  name.isNotEmpty ? name : '—',
+                  style: _valueStyle(),
+                ),
+                if (email.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text('EMAIL', style: _labelStyle()),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: AppColors.textDark.withValues(alpha: 0.75),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 14),
+                Container(
+                  height: 1,
+                  color: Colors.grey.shade200,
+                ),
+                const SizedBox(height: 14),
+
+                // ── Items ───────────────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'ITEMS',
+                      style: _labelStyle(),
+                    ),
+                    Text(
+                      '$itemCount ${itemCount == 1 ? 'piece' : 'pieces'}',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 ...order.items.map(
                   (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.water_drop_outlined,
-                            size: 14, color: AppColors.secondary),
+                        Icon(
+                          Icons.spa_outlined,
+                          size: 14,
+                          color: AppColors.secondary.withValues(alpha: 0.85),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '${item.productName} × ${item.quantity}',
+                            item.productName,
                             style: AppTextStyles.bodyMedium.copyWith(
-                              fontSize: 13,
+                              fontSize: 14,
                               height: 1.35,
+                              fontWeight: FontWeight.w500,
                             ),
+                          ),
+                        ),
+                        Text(
+                          '× ${item.quantity}',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark.withValues(alpha: 0.65),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Divider(height: 1, color: Colors.grey.shade200),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+
+                if (order.status == OrderStatus.cancelled &&
+                    (order.cancellationReason?.trim().isNotEmpty ?? false)) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 13,
-                          color: AppColors.textDark.withValues(alpha: 0.4),
-                        ),
-                        const SizedBox(width: 6),
                         Text(
-                          _dateStr,
+                          'Cancelled by store',
                           style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textDark.withValues(alpha: 0.5),
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.danger,
                             fontSize: 12,
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        Text(
+                          order.cancellationReason!.trim(),
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                        if (order.cancelledAt != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Cancelled · ${formatOrderActionTime(order.cancelledAt)}',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontSize: 11,
+                              color: AppColors.textDark.withValues(alpha: 0.45),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    Text(
-                      'PKR ${order.total.toStringAsFixed(0)}',
-                      style: AppTextStyles.titleLarge.copyWith(
-                        color: AppColors.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                  ),
+                ],
+
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ORDERED ON',
+                              style: _labelStyle(),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              formatOrderActionTime(order.createdAt),
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: AppColors.textDark,
+                                height: 1.25,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      Container(
+                        width: 1,
+                        height: 52,
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        color: Colors.grey.shade300,
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'TOTAL',
+                              style: _labelStyle(),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'PKR ${order.total.toStringAsFixed(0)}',
+                              style: AppTextStyles.titleLarge.copyWith(
+                                color: AppColors.primary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

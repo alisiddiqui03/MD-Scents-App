@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
-import '../../../../app/widgets/loading_overlay.dart';
 
 class AuthView extends GetView<AuthController> {
   const AuthView({super.key});
@@ -15,19 +14,14 @@ class AuthView extends GetView<AuthController> {
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Obx(
-          () => LoadingOverlay(
-            isLoading: controller.isLoading.value,
-            title: 'Please wait',
-            subtitle: 'Processing your request…',
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 16),
-                  _buildLogo(),
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
+              _buildLogo(),
               const SizedBox(height: 28),
 
               // ── Tab switcher ─────────────────────────────────────────────
@@ -68,16 +62,15 @@ class AuthView extends GetView<AuthController> {
                       backgroundColor: Colors.white,
                       textColor: AppColors.textDark,
                       borderColor: Colors.grey.shade300,
+                      isLoading: controller.isLoadingGoogle.value,
+                      isBusy: controller.isLoadingEmail.value,
                     ),
-                    // Phone / OTP — hidden until wired with Firebase
                   ],
                 );
               }),
 
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),
@@ -105,7 +98,7 @@ class AuthView extends GetView<AuthController> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(22),
             child: Image.asset(
-              'assets/images/app_icon.jpeg',
+              'assets/images/app_icon.png',
               fit: BoxFit.cover,
             ),
           ),
@@ -200,7 +193,8 @@ class AuthView extends GetView<AuthController> {
         Obx(() => _PrimaryButton(
               label: 'Sign In',
               icon: Icons.login_rounded,
-              isLoading: controller.isLoading.value,
+              isLoading: controller.isLoadingEmail.value,
+              isBusy: controller.isLoadingGoogle.value,
               onTap: controller.loginWithEmail,
             )),
         const SizedBox(height: 14),
@@ -251,7 +245,8 @@ class AuthView extends GetView<AuthController> {
         Obx(() => _PrimaryButton(
               label: 'Create Account',
               icon: Icons.person_add_outlined,
-              isLoading: controller.isLoading.value,
+              isLoading: controller.isLoadingEmail.value,
+              isBusy: controller.isLoadingGoogle.value,
               onTap: controller.registerWithEmail,
             )),
         const SizedBox(height: 14),
@@ -307,7 +302,8 @@ class AuthView extends GetView<AuthController> {
         Obx(() => _PrimaryButton(
               label: 'Send Reset Link',
               icon: Icons.send_outlined,
-              isLoading: controller.isLoading.value,
+              isLoading: controller.isLoadingEmail.value,
+              isBusy: controller.isLoadingGoogle.value,
               onTap: controller.sendPasswordReset,
             )),
         const SizedBox(height: 14),
@@ -507,19 +503,23 @@ class _PrimaryButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool isLoading;
+  /// True while the other auth path (e.g. Google) is in progress — disables tap, no spinner.
+  final bool isBusy;
   final VoidCallback onTap;
 
   const _PrimaryButton({
     required this.label,
     required this.icon,
     required this.isLoading,
+    this.isBusy = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final blocked = isLoading || isBusy;
     return GestureDetector(
-      onTap: isLoading ? null : onTap,
+      onTap: blocked ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: 54,
@@ -572,6 +572,9 @@ class _SocialButton extends StatelessWidget {
   final Color backgroundColor;
   final Color textColor;
   final Color? borderColor;
+  final bool isLoading;
+  /// True while email/password flow is in progress — disables tap, no spinner.
+  final bool isBusy;
 
   const _SocialButton({
     required this.onTap,
@@ -580,38 +583,59 @@ class _SocialButton extends StatelessWidget {
     required this.backgroundColor,
     required this.textColor,
     this.borderColor,
+    this.isLoading = false,
+    this.isBusy = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final blocked = isLoading || isBusy;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 54,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(14),
-          border:
-              borderColor != null ? Border.all(color: borderColor!) : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon,
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style:
-                  AppTextStyles.buttonText.copyWith(color: textColor),
-            ),
-          ],
+      onTap: blocked ? null : onTap,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: blocked && !isLoading ? 0.55 : 1,
+        child: Container(
+          height: 54,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(14),
+            border:
+                borderColor != null ? Border.all(color: borderColor!) : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Center(
+            child: isLoading
+                ? SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        textColor.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      icon,
+                      const SizedBox(width: 12),
+                      Text(
+                        label,
+                        style: AppTextStyles.buttonText.copyWith(
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

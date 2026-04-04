@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/routes/app_pages.dart';
+import '../../../../app/utils/order_action_time.dart';
 
 class OrderConfirmView extends StatelessWidget {
   const OrderConfirmView({super.key});
@@ -16,6 +17,7 @@ class OrderConfirmView extends StatelessWidget {
     final total = args['total'] as String? ?? 'PKR 0';
     final isCod = args['isCod'] as bool? ?? true;
     final itemCount = args['itemCount'] as int? ?? 1;
+    final placedAt = args['placedAt'] as DateTime?;
     final grossSubtotal = (args['grossSubtotal'] as num?)?.toDouble();
     final productSavings = (args['productSavings'] as num?)?.toDouble();
     final globalSavings = (args['globalSavings'] as num?)?.toDouble();
@@ -112,6 +114,12 @@ class OrderConfirmView extends StatelessWidget {
                         label: 'Order ID',
                         value: orderId,
                         valueColor: AppColors.primary,
+                      ),
+                      const SizedBox(height: 14),
+                      _InfoRow(
+                        icon: Icons.schedule_rounded,
+                        label: 'Placed at',
+                        value: formatOrderActionTime(placedAt),
                       ),
                       const SizedBox(height: 14),
                       _InfoRow(
