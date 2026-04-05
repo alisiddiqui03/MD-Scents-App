@@ -1,4 +1,4 @@
-# flutter_application_1
+# md_scents_app
 
 A new Flutter project.
 

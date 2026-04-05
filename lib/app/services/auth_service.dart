@@ -3,8 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../services/onesignal_service.dart';
 import '../config/google_auth_config.dart';
 import '../data/models/app_user.dart';
+import '../exceptions/google_account_link_exception.dart';
 
 class AuthService extends GetxService {
   AuthService();
@@ -22,6 +24,8 @@ class AuthService extends GetxService {
       serverClientId: kGoogleOAuthWebClientId.isEmpty
           ? null
           : kGoogleOAuthWebClientId,
+      // Android: helps OAuth exchange; avoids reusing an old refresh path without tokens.
+      forceCodeForRefreshToken: true,
     );
     return _googleSignIn!;
   }
@@ -52,6 +56,13 @@ class AuthService extends GetxService {
     await _loadUserProfile(user);
   }
 
+  /// Reload Firestore profile into [currentUser] (e.g. after referral code is assigned).
+  Future<void> refreshProfile() async {
+    final u = _auth.currentUser;
+    if (u == null) return;
+    await _loadUserProfile(u);
+  }
+
   Future<void> _loadUserProfile(User user) async {
     final doc = await _firestore
         .collection('users')
@@ -66,11 +77,13 @@ class AuthService extends GetxService {
         email: user.email,
         displayName: user.displayName,
         role: 'user',
+        referralCode: null,
+        referredBy: null,
       );
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .set(fallback.toMap(), SetOptions(merge: true));
+      await _firestore.collection('users').doc(user.uid).set({
+        ...fallback.toMap(),
+        'wallet': {'balance': 0.0, 'pendingRewards': 0.0},
+      }, SetOptions(merge: true));
       currentUser.value = fallback;
     }
   }
@@ -85,6 +98,8 @@ class AuthService extends GetxService {
       email: email,
       displayName: asAdmin ? 'Debug Admin' : 'Debug User',
       role: asAdmin ? 'admin' : 'user',
+      referralCode: 'DEBUG123',
+      referredBy: null,
     );
     currentUser.value = mockUser;
   }
@@ -95,6 +110,7 @@ class AuthService extends GetxService {
       password: password,
     );
     await _loadUserProfile(credential.user!);
+    await _syncOneSignalPlayerId(credential.user!.uid);
     return credential;
   }
 
@@ -119,12 +135,15 @@ class AuthService extends GetxService {
       email: user.email,
       displayName: displayName ?? user.displayName,
       role: role,
+      referralCode: null,
+      referredBy: null,
     );
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .set(profile.toMap(), SetOptions(merge: true));
+    await _firestore.collection('users').doc(user.uid).set({
+      ...profile.toMap(),
+      'wallet': {'balance': 0.0, 'pendingRewards': 0.0},
+    }, SetOptions(merge: true));
     currentUser.value = profile;
+    await _syncOneSignalPlayerId(user.uid);
     return credential;
   }
 
@@ -134,6 +153,9 @@ class AuthService extends GetxService {
     } catch (_) {
       // Ignore if Google Sign-In was never used or plugin state is stale.
     }
+    try {
+      await OneSignalService.signOutCleanup();
+    } catch (_) {}
     await _auth.signOut();
     currentUser.value = null;
     firebaseUser.value = null;
@@ -150,6 +172,23 @@ class AuthService extends GetxService {
   }
 
   Future<UserCredential> signInWithGoogle() async {
+    if (kGoogleOAuthWebClientId.trim().isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-credential',
+        message:
+            'Google Web client ID is not set. Add kGoogleOAuthWebClientId in '
+            'lib/app/config/google_auth_config.dart (Firebase → Authentication → Google → Web client ID).',
+      );
+    }
+
+    // Clear cached Google session (stale ID token on wrong device time / cached creds).
+    try {
+      await _googleSignInClient.signOut();
+    } catch (_) {}
+    try {
+      await _googleSignInClient.disconnect();
+    } catch (_) {}
+
     final GoogleSignInAccount? googleUser =
         await _googleSignInClient.signIn();
 
@@ -182,17 +221,50 @@ class AuthService extends GetxService {
     try {
       final credentialResult = await _auth.signInWithCredential(credential);
       await _loadUserProfile(credentialResult.user!);
+      await _syncOneSignalPlayerId(credentialResult.user!.uid);
       return credentialResult;
     } on FirebaseAuthException catch (e) {
-      // Check if account already exists with different credential
       if (e.code == 'account-exists-with-different-credential') {
-        throw FirebaseAuthException(
-          code: 'account-exists-with-different-credential',
-          message: 'اکاؤنٹ پہلے سے موجود ہے۔ براہ کرم ای میل اور پاس ورڈ سے لاگ ان کریں۔',
+        final email = (e.email?.trim().isNotEmpty ?? false)
+            ? e.email!.trim()
+            : googleUser.email.trim();
+        if (email.isEmpty) {
+          throw FirebaseAuthException(
+            code: 'account-exists-with-different-credential',
+            message:
+                'This email is already registered with another sign-in method. '
+                'Sign in with email and password first.',
+          );
+        }
+        throw GoogleAccountNeedsPasswordException(
+          email: email,
+          googleCredential: credential,
         );
       }
-      // Re-throw other Firebase exceptions
       rethrow;
     }
+  }
+
+  /// After [signInWithGoogle] throws [GoogleAccountNeedsPasswordException],
+  /// sign in with the existing email/password account and link the Google credential.
+  Future<UserCredential> linkGoogleAfterEmailPassword({
+    required String email,
+    required String password,
+    required OAuthCredential googleCredential,
+  }) async {
+    final userCredential = await _auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+    await userCredential.user!.linkWithCredential(googleCredential);
+    await _loadUserProfile(userCredential.user!);
+    await _syncOneSignalPlayerId(userCredential.user!.uid);
+    return userCredential;
+  }
+
+  Future<void> _syncOneSignalPlayerId(String uid) async {
+    try {
+      await OneSignalService.savePlayerIdToFirestore(uid);
+    } catch (_) {}
   }
 }

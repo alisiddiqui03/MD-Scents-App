@@ -21,6 +21,8 @@ abstract class Routes {
   static const USER_ALL_PRODUCTS = _Paths.USER_ALL_PRODUCTS;
   static const USER_FEATURED_PRODUCTS = _Paths.USER_FEATURED_PRODUCTS;
   static const USER_ORDER_CONFIRM = _Paths.USER_ORDER_CONFIRM;
+  static const USER_REFER_EARN = _Paths.USER_REFER_EARN;
+  static const USER_WALLET = _Paths.USER_WALLET;
 
   // Admin flow
   static const ADMIN_BASE = _Paths.ADMIN_BASE;
@@ -28,6 +30,8 @@ abstract class Routes {
   static const ADMIN_UPLOAD_PRODUCT = _Paths.ADMIN_UPLOAD_PRODUCT;
   static const ADMIN_INVENTORY = _Paths.ADMIN_INVENTORY;
   static const ADMIN_ORDERS = _Paths.ADMIN_ORDERS;
+  static const ADMIN_REFERRALS = _Paths.ADMIN_REFERRALS;
+  static const ADMIN_REFERRAL_ORDER_DETAIL = _Paths.ADMIN_REFERRAL_ORDER_DETAIL;
   static const ADMIN_SETTINGS = _Paths.ADMIN_SETTINGS;
   static const ADMIN_ADS_DISCOUNT = _Paths.ADMIN_ADS_DISCOUNT;
 }
@@ -53,6 +57,8 @@ abstract class _Paths {
   static const USER_ALL_PRODUCTS = '/user/all-products';
   static const USER_FEATURED_PRODUCTS = '/user/featured-products';
   static const USER_ORDER_CONFIRM = '/user/order-confirm';
+  static const USER_REFER_EARN = '/user/refer-earn';
+  static const USER_WALLET = '/user/wallet';
 
   // Admin flow
   static const ADMIN_BASE = '/admin';
@@ -60,6 +66,8 @@ abstract class _Paths {
   static const ADMIN_UPLOAD_PRODUCT = '/admin/upload-product';
   static const ADMIN_INVENTORY = '/admin/inventory';
   static const ADMIN_ORDERS = '/admin/orders';
+  static const ADMIN_REFERRALS = '/admin/referrals';
+  static const ADMIN_REFERRAL_ORDER_DETAIL = '/admin/referral-order-detail';
   static const ADMIN_SETTINGS = '/admin/settings';
   static const ADMIN_ADS_DISCOUNT = '/admin/ads-discount';
 }

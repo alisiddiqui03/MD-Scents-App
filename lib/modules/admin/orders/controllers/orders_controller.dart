@@ -13,6 +13,7 @@ class OrdersController extends GetxController {
   final isUpdatingPaid = false.obs;
   final isUpdatingStatus = false.obs;
   final isCancellingOrder = false.obs;
+  final isDeletingOrder = false.obs;
 
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
@@ -186,6 +187,69 @@ class OrdersController extends GetxController {
       AdminSnackbar.error('Update failed', e.toString());
     } finally {
       isUpdatingPaid.value = false;
+    }
+  }
+
+  /// Returns true if Firestore delete succeeded (for [Dismissible]).
+  Future<bool> tryDeleteCancelledOrder(Order order) async {
+    if (order.firestorePath == null) return false;
+    isDeletingOrder.value = true;
+    try {
+      await _orderService.deleteOrderDocument(order);
+      AdminSnackbar.success(
+        'Order removed',
+        'Cancelled order deleted · ${formatOrderActionTime()}',
+      );
+      return true;
+    } catch (e) {
+      AdminSnackbar.error('Could not delete', e.toString());
+      return false;
+    } finally {
+      isDeletingOrder.value = false;
+    }
+  }
+
+  Future<void> confirmDeleteAllCancelled() async {
+    final cancelled = _orderService.orders
+        .where((o) => o.status == OrderStatus.cancelled)
+        .length;
+    if (cancelled == 0) return;
+
+    final ok = await Get.dialog<bool>(
+      barrierDismissible: false,
+      AlertDialog(
+        title: const Text('Delete all cancelled orders?'),
+        content: Text(
+          'This will permanently remove $cancelled cancelled order(s) from '
+          'Firestore. Customers can still see past orders in their app history '
+          'if cached — only the admin list is cleaned.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Get.back(result: true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Delete all'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    isDeletingOrder.value = true;
+    try {
+      final n = await _orderService.deleteAllCancelledOrders();
+      AdminSnackbar.success(
+        'Cleared',
+        '$n cancelled order(s) removed · ${formatOrderActionTime()}',
+      );
+    } catch (e) {
+      AdminSnackbar.error('Could not clear', e.toString());
+    } finally {
+      isDeletingOrder.value = false;
     }
   }
 

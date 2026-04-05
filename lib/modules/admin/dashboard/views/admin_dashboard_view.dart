@@ -3,11 +3,13 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
 
 import '../controllers/admin_dashboard_controller.dart';
+import '../../../../app/services/admin_referrals_service.dart';
 import '../../../../app/services/order_service.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/routes/app_pages.dart';
+import '../../../../app/utils/order_action_time.dart';
 
 class AdminDashboardView extends GetView<AdminDashboardController> {
   const AdminDashboardView({super.key});
@@ -37,6 +39,8 @@ class AdminDashboardView extends GetView<AdminDashboardController> {
                       _KpiRow(controller: controller),
                       const SizedBox(height: 16),
                       _AdsDiscountEntryCard(),
+                      // const SizedBox(height: 20),
+                      // const _ReferralsAdminCard(),
                       const SizedBox(height: 20),
                       _StatusSummary(controller: controller),
                       const SizedBox(height: 20),
@@ -871,5 +875,239 @@ class _StatusChip extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Recent referral rows (referrer → referred user, pending vs completed).
+class _ReferralsAdminCard extends StatelessWidget {
+  const _ReferralsAdminCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      AdminReferralsService.to.rows.length;
+      AdminReferralsService.to.isLoading.value;
+      final rows = AdminReferralsService.to.rows;
+      final loading = AdminReferralsService.to.isLoading.value;
+
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Get.toNamed(Routes.ADMIN_REFERRALS),
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.15),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.people_outline_rounded,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Referrals',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Tap to open the full list, filter by date, and view each referral order in detail.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 12,
+                      color: AppColors.textDark.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (loading && rows.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  else if (rows.isEmpty)
+                    Text(
+                      'No referral activity yet.',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textDark.withValues(alpha: 0.45),
+                        fontSize: 13,
+                      ),
+                    )
+                  else
+                    Column(
+                      children: rows.take(6).map((r) {
+                        final st = r.status == 'completed'
+                            ? 'Completed'
+                            : 'Pending';
+                        final c = r.status == 'completed'
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFFF59E0B);
+                        final invitedName =
+                            (r.referredUserName != null &&
+                                r.referredUserName!.trim().isNotEmpty)
+                            ? r.referredUserName!.trim()
+                            : 'User ${r.referredUserId.length > 8 ? r.referredUserId.substring(0, 8) : r.referredUserId}…';
+                        final invitedEmail =
+                            (r.referredUserEmail != null &&
+                                r.referredUserEmail!.trim().isNotEmpty)
+                            ? r.referredUserEmail!.trim()
+                            : null;
+                        final orderShort = r.orderId.length > 12
+                            ? '${r.orderId.substring(0, 12)}…'
+                            : r.orderId;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.textDark.withValues(alpha: 0.03),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.textDark.withValues(
+                                  alpha: 0.06,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Invited: $invitedName',
+                                            style: AppTextStyles.bodyMedium
+                                                .copyWith(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
+                                                  height: 1.25,
+                                                ),
+                                          ),
+                                          if (invitedEmail != null) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              invitedEmail,
+                                              style: AppTextStyles.bodyMedium
+                                                  .copyWith(
+                                                    fontSize: 11,
+                                                    color: AppColors.textDark
+                                                        .withValues(
+                                                          alpha: 0.65,
+                                                        ),
+                                                  ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: c.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        st,
+                                        style: AppTextStyles.bodyMedium
+                                            .copyWith(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: c,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Reward PKR ${r.rewardAmount.toStringAsFixed(0)} · Order $orderShort',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    fontSize: 10,
+                                    color: AppColors.textDark.withValues(
+                                      alpha: 0.55,
+                                    ),
+                                  ),
+                                ),
+                                if (r.createdAt != null)
+                                  Text(
+                                    'Created: ${formatOrderActionTime(r.createdAt)}',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontSize: 10,
+                                      color: AppColors.textDark.withValues(
+                                        alpha: 0.45,
+                                      ),
+                                    ),
+                                  ),
+                                if (r.completedAt != null)
+                                  Text(
+                                    'Completed: ${formatOrderActionTime(r.completedAt)}',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF16A34A),
+                                    ),
+                                  ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Referrer UID: ${r.referrerUid.length > 10 ? r.referrerUid.substring(0, 10) : r.referrerUid}…',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    fontSize: 9,
+                                    color: AppColors.textDark.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap for orders → mark Delivered + Paid to activate rewards',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 11,
+                      color: AppColors.primary.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }

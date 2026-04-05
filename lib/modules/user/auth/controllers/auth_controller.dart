@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../../app/exceptions/google_account_link_exception.dart';
 import '../../../../app/services/auth_service.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -180,13 +181,12 @@ class AuthController extends GetxController {
     try {
       isLoadingGoogle.value = true;
       await _authService.signInWithGoogle();
-
-      if (_authService.isAdmin) {
-        Get.offAllNamed(Routes.ADMIN_BASE);
-      } else {
-        Get.offAllNamed(Routes.USER_BASE);
-      }
+      _navigateAfterGoogleAuth();
+    } on GoogleAccountNeedsPasswordException catch (e) {
+      isLoadingGoogle.value = false;
+      await _promptPasswordAndLinkGoogle(e);
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'google-sign-in-aborted') return;
       _snack('Google Sign-In Failed', userFacingAuthError(e));
     } catch (e) {
       _snack('Google Sign-In Failed', userFacingAuthError(e));
@@ -200,23 +200,101 @@ class AuthController extends GetxController {
     try {
       isLoadingGoogle.value = true;
       await _authService.signInWithGoogle();
-
-      if (_authService.isAdmin) {
-        Get.offAllNamed(Routes.ADMIN_BASE);
-      } else {
-        Get.offAllNamed(Routes.USER_BASE);
-      }
+      _navigateAfterGoogleAuth();
+    } on GoogleAccountNeedsPasswordException catch (e) {
+      isLoadingGoogle.value = false;
+      await _promptPasswordAndLinkGoogle(e);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'account-exists-with-different-credential') {
-        _snack('اکاؤنٹ پہلے سے موجود ہے', 'یہ ای میل پہلے سے ای میل اور پاس ورڈ سے رجسٹر ہے۔ براہ کرم لاگ ان کریں۔');
-      } else {
-        _snack('Google Sign-Up Failed', userFacingAuthError(e));
-      }
+      if (e.code == 'google-sign-in-aborted') return;
+      _snack('Google Sign-Up Failed', userFacingAuthError(e));
     } catch (e) {
       _snack('Google Sign-Up Failed', userFacingAuthError(e));
     } finally {
       isLoadingGoogle.value = false;
     }
+  }
+
+  void _navigateAfterGoogleAuth() {
+    if (_authService.isAdmin) {
+      Get.offAllNamed(Routes.ADMIN_BASE);
+    } else {
+      Get.offAllNamed(Routes.USER_BASE);
+    }
+  }
+
+  Future<void> _promptPasswordAndLinkGoogle(
+    GoogleAccountNeedsPasswordException e,
+  ) async {
+    final password = await _showLinkPasswordDialog(e.email);
+    if (password == null || password.isEmpty) return;
+
+    try {
+      isLoadingGoogle.value = true;
+      await _authService.linkGoogleAfterEmailPassword(
+        email: e.email,
+        password: password,
+        googleCredential: e.googleCredential,
+      );
+      _navigateAfterGoogleAuth();
+    } on FirebaseAuthException catch (err) {
+      _snack('Link failed', userFacingAuthError(err));
+    } catch (err) {
+      _snack('Link failed', userFacingAuthError(err));
+    } finally {
+      isLoadingGoogle.value = false;
+    }
+  }
+
+  Future<String?> _showLinkPasswordDialog(String email) async {
+    final ctrl = TextEditingController();
+    final result = await Get.dialog<String>(
+      AlertDialog(
+        title: const Text('اکاؤنٹ جوڑیں'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'یہ Google والی ای میل پہلے سے ای میل اور پاس ورڈ سے رجسٹر ہے۔ '
+                'ایک بار اپنا پاس ورڈ درج کریں تاکہ Google سائن ان منسلک ہو جائے۔',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                email,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                obscureText: true,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'پاس ورڈ',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) =>
+                    Get.back(result: ctrl.text.trim()),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('منسوخ'),
+          ),
+          FilledButton(
+            onPressed: () => Get.back(result: ctrl.text.trim()),
+            child: const Text('جاری رکھیں'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+    ctrl.dispose();
+    return result;
   }
 
   // ── Phone / OTP ───────────────────────────────────────────────────────────

@@ -97,10 +97,7 @@ class AuthView extends GetView<AuthController> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(22),
-            child: Image.asset(
-              'assets/images/app_icon.png',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/images/app_icon.png', fit: BoxFit.cover),
           ),
         ),
         const SizedBox(height: 12),
@@ -167,13 +164,15 @@ class AuthView extends GetView<AuthController> {
           type: TextInputType.emailAddress,
         ),
         const SizedBox(height: 12),
-        Obx(() => _InputField(
-              controller: controller.passwordController,
-              hint: 'Password',
-              icon: Icons.lock_outline,
-              obscure: controller.obscurePassword.value,
-              onToggleObscure: controller.togglePasswordVisibility,
-            )),
+        Obx(
+          () => _InputField(
+            controller: controller.passwordController,
+            hint: 'Password',
+            icon: Icons.lock_outline,
+            obscure: controller.obscurePassword.value,
+            onToggleObscure: controller.togglePasswordVisibility,
+          ),
+        ),
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
@@ -190,13 +189,15 @@ class AuthView extends GetView<AuthController> {
           ),
         ),
         const SizedBox(height: 20),
-        Obx(() => _PrimaryButton(
-              label: 'Sign In',
-              icon: Icons.login_rounded,
-              isLoading: controller.isLoadingEmail.value,
-              isBusy: controller.isLoadingGoogle.value,
-              onTap: controller.loginWithEmail,
-            )),
+        Obx(
+          () => _PrimaryButton(
+            label: 'Sign In',
+            icon: Icons.login_rounded,
+            isLoading: controller.isLoadingEmail.value,
+            isBusy: controller.isLoadingGoogle.value,
+            onTap: controller.loginWithEmail,
+          ),
+        ),
         const SizedBox(height: 14),
         _switchPrompt(
           question: "Don't have an account?",
@@ -226,29 +227,35 @@ class AuthView extends GetView<AuthController> {
           type: TextInputType.emailAddress,
         ),
         const SizedBox(height: 12),
-        Obx(() => _InputField(
-              controller: controller.passwordController,
-              hint: 'Password',
-              icon: Icons.lock_outline,
-              obscure: controller.obscurePassword.value,
-              onToggleObscure: controller.togglePasswordVisibility,
-            )),
+        Obx(
+          () => _InputField(
+            controller: controller.passwordController,
+            hint: 'Password',
+            icon: Icons.lock_outline,
+            obscure: controller.obscurePassword.value,
+            onToggleObscure: controller.togglePasswordVisibility,
+          ),
+        ),
         const SizedBox(height: 12),
-        Obx(() => _InputField(
-              controller: controller.confirmPasswordController,
-              hint: 'Confirm password',
-              icon: Icons.lock_outline,
-              obscure: controller.obscureConfirm.value,
-              onToggleObscure: controller.toggleConfirmVisibility,
-            )),
+        Obx(
+          () => _InputField(
+            controller: controller.confirmPasswordController,
+            hint: 'Confirm password',
+            icon: Icons.lock_outline,
+            obscure: controller.obscureConfirm.value,
+            onToggleObscure: controller.toggleConfirmVisibility,
+          ),
+        ),
         const SizedBox(height: 20),
-        Obx(() => _PrimaryButton(
-              label: 'Create Account',
-              icon: Icons.person_add_outlined,
-              isLoading: controller.isLoadingEmail.value,
-              isBusy: controller.isLoadingGoogle.value,
-              onTap: controller.registerWithEmail,
-            )),
+        Obx(
+          () => _PrimaryButton(
+            label: 'Create Account',
+            icon: Icons.person_add_outlined,
+            isLoading: controller.isLoadingEmail.value,
+            isBusy: controller.isLoadingGoogle.value,
+            onTap: controller.registerWithEmail,
+          ),
+        ),
         const SizedBox(height: 14),
         _switchPrompt(
           question: 'Already have an account?',
@@ -271,16 +278,20 @@ class AuthView extends GetView<AuthController> {
             color: AppColors.primary.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.15)),
+              color: AppColors.primary.withValues(alpha: 0.15),
+            ),
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline_rounded,
-                  color: AppColors.primary, size: 20),
+              const Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Enter your account email. We\'ll send a reset link — check inbox & spam. Same flow for customers and admins using email & password.',
+                  'Enter your account email. We\'ll send a reset link check inbox & spam. Same flow for customers and admins using email & password.',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.primary,
                     fontSize: 13,
@@ -299,13 +310,15 @@ class AuthView extends GetView<AuthController> {
           type: TextInputType.emailAddress,
         ),
         const SizedBox(height: 20),
-        Obx(() => _PrimaryButton(
-              label: 'Send Reset Link',
-              icon: Icons.send_outlined,
-              isLoading: controller.isLoadingEmail.value,
-              isBusy: controller.isLoadingGoogle.value,
-              onTap: controller.sendPasswordReset,
-            )),
+        Obx(
+          () => _PrimaryButton(
+            label: 'Send Reset Link',
+            icon: Icons.send_outlined,
+            isLoading: controller.isLoadingEmail.value,
+            isBusy: controller.isLoadingGoogle.value,
+            onTap: controller.sendPasswordReset,
+          ),
+        ),
         const SizedBox(height: 14),
         _switchPrompt(
           question: 'Remembered it?',
@@ -401,8 +414,7 @@ class _TabButton extends StatelessWidget {
                 color: active
                     ? Colors.white
                     : AppColors.textDark.withValues(alpha: 0.45),
-                fontWeight:
-                    active ? FontWeight.w700 : FontWeight.normal,
+                fontWeight: active ? FontWeight.w700 : FontWeight.normal,
                 fontSize: 13,
               ),
             ),
@@ -474,8 +486,11 @@ class _InputField extends StatelessWidget {
           hintStyle: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.textDark.withValues(alpha: 0.35),
           ),
-          prefixIcon: Icon(icon,
-              color: AppColors.textDark.withValues(alpha: 0.45), size: 20),
+          prefixIcon: Icon(
+            icon,
+            color: AppColors.textDark.withValues(alpha: 0.45),
+            size: 20,
+          ),
           suffixIcon: onToggleObscure != null
               ? GestureDetector(
                   onTap: onToggleObscure,
@@ -489,8 +504,10 @@ class _InputField extends StatelessWidget {
                 )
               : null,
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -503,6 +520,7 @@ class _PrimaryButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool isLoading;
+
   /// True while the other auth path (e.g. Google) is in progress — disables tap, no spinner.
   final bool isBusy;
   final VoidCallback onTap;
@@ -545,8 +563,7 @@ class _PrimaryButton extends StatelessWidget {
                   width: 22,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
               : Row(
@@ -573,6 +590,7 @@ class _SocialButton extends StatelessWidget {
   final Color textColor;
   final Color? borderColor;
   final bool isLoading;
+
   /// True while email/password flow is in progress — disables tap, no spinner.
   final bool isBusy;
 
@@ -600,8 +618,9 @@ class _SocialButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
-            border:
-                borderColor != null ? Border.all(color: borderColor!) : null,
+            border: borderColor != null
+                ? Border.all(color: borderColor!)
+                : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.06),
@@ -668,36 +687,56 @@ class _GooglePainter extends CustomPainter {
     final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r);
 
     // Red arc (top-right)
-    canvas.drawArc(rect, -0.52, 1.57, false,
-        Paint()
-          ..color = const Color(0xFFEA4335)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = size.width * 0.18
-          ..strokeCap = StrokeCap.butt);
+    canvas.drawArc(
+      rect,
+      -0.52,
+      1.57,
+      false,
+      Paint()
+        ..color = const Color(0xFFEA4335)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.18
+        ..strokeCap = StrokeCap.butt,
+    );
 
     // Yellow arc (bottom-right)
-    canvas.drawArc(rect, 1.05, 1.05, false,
-        Paint()
-          ..color = const Color(0xFFFBBC05)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = size.width * 0.18
-          ..strokeCap = StrokeCap.butt);
+    canvas.drawArc(
+      rect,
+      1.05,
+      1.05,
+      false,
+      Paint()
+        ..color = const Color(0xFFFBBC05)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.18
+        ..strokeCap = StrokeCap.butt,
+    );
 
     // Green arc (bottom-left)
-    canvas.drawArc(rect, 2.1, 1.05, false,
-        Paint()
-          ..color = const Color(0xFF34A853)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = size.width * 0.18
-          ..strokeCap = StrokeCap.butt);
+    canvas.drawArc(
+      rect,
+      2.1,
+      1.05,
+      false,
+      Paint()
+        ..color = const Color(0xFF34A853)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.18
+        ..strokeCap = StrokeCap.butt,
+    );
 
     // Blue arc (top-left)
-    canvas.drawArc(rect, 3.15, 1.63, false,
-        Paint()
-          ..color = const Color(0xFF4285F4)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = size.width * 0.18
-          ..strokeCap = StrokeCap.butt);
+    canvas.drawArc(
+      rect,
+      3.15,
+      1.63,
+      false,
+      Paint()
+        ..color = const Color(0xFF4285F4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.18
+        ..strokeCap = StrokeCap.butt,
+    );
 
     // White horizontal bar of the "G"
     canvas.drawRect(

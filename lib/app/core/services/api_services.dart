@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter_application_1/app/core/config/app_config.dart';
-import 'package:flutter_application_1/app/core/services/storage_services.dart';
+import 'package:md_scents_app/app/core/config/app_config.dart';
+import 'package:md_scents_app/app/core/services/storage_services.dart';
 
 class ApiService {
   static final Dio dio =

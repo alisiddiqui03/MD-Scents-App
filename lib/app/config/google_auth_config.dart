@@ -10,6 +10,7 @@
 /// `oauth_client` entries. You can still set [kGoogleOAuthWebClientId] explicitly
 /// if needed.
 ///
-/// Leave empty only while testing; Google sign-in will often fail with
-/// `invalid-credential` until this is set or `google-services.json` includes OAuth clients.
-const String kGoogleOAuthWebClientId = '';
+/// Web client (`client_type: 3`) from `android/app/google-services.json` — required on
+/// Android so the ID token is minted for Firebase. Empty ⇒ `invalid-credential` / stale token.
+const String kGoogleOAuthWebClientId =
+    '206439401804-8385v6h910puk3p2j8rp7vj80m7fr994.apps.googleusercontent.com';

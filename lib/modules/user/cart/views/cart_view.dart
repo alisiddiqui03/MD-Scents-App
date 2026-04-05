@@ -3,11 +3,13 @@ import 'package:get/get.dart';
 
 import '../controllers/cart_controller.dart';
 import '../../user_base/controllers/user_base_controller.dart';
+import '../../../../app/config/referral_constants.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/services/auth_service.dart';
 import '../../../../app/services/discount_service.dart';
 import '../../../../app/services/product_service.dart';
+import '../../../../app/services/wallet_service.dart';
 
 class CartView extends GetView<CartController> {
   const CartView({super.key});
@@ -89,6 +91,8 @@ class CartView extends GetView<CartController> {
                   _buildDeliverySection(),
                   const SizedBox(height: 24),
                   _buildPaymentOptions(),
+                  const SizedBox(height: 24),
+                  _buildReferralAndWalletSection(),
                   const SizedBox(height: 24),
                   _buildOrderSummary(),
                   const SizedBox(height: 16),
@@ -285,17 +289,56 @@ class CartView extends GetView<CartController> {
                 onTap: () => controller.selectPayment(PaymentMethod.cod),
               ),
               const SizedBox(height: 12),
-              // Bank Transfer
+              // Bank Transfer — extra 5% off (not available on COD)
               _PaymentTile(
                 icon: Icons.account_balance_outlined,
                 label: 'Bank Transfer',
-                sublabel: 'Upload payment receipt',
+                sublabel:
+                    'Extra ${kBankTransferExtraDiscountPercent.toStringAsFixed(0)}% off · '
+                    'Upload receipt · Not available on COD',
                 selected:
                     controller.selectedPayment.value ==
                     PaymentMethod.bankTransfer,
                 onTap: () =>
                     controller.selectPayment(PaymentMethod.bankTransfer),
               ),
+              if (controller.selectedPayment.value ==
+                  PaymentMethod.bankTransfer) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.verified_outlined,
+                        color: AppColors.success.withValues(alpha: 0.95),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'You always get an extra ${kBankTransferExtraDiscountPercent.toStringAsFixed(0)}% off on bank transfer on top of any discount you already have (welcome, ads, etc.). COD does not include this bonus.',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontSize: 11,
+                            height: 1.4,
+                            color: AppColors.textDark.withValues(alpha: 0.78),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // Receipt upload — only shown when Bank Transfer selected
               if (controller.selectedPayment.value ==
                   PaymentMethod.bankTransfer) ...[
@@ -445,6 +488,131 @@ class CartView extends GetView<CartController> {
     });
   }
 
+  // ── Referral + wallet balance (checkout) ──────────────────────────────────
+
+  Widget _buildReferralAndWalletSection() {
+    return Obx(() {
+      WalletService.to.balance.value;
+      WalletService.to.pendingRewards.value;
+      controller.completedOrderCount.value;
+      controller.applyWalletBalance.value;
+
+      final showReferral = controller.isFirstOrderForReferralUi;
+      final bal = WalletService.to.balance.value;
+      final canUseWallet = bal > 0.009 && controller.items.isNotEmpty;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Referral & wallet',
+              style: AppTextStyles.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (showReferral) ...[
+              Text(
+                'Referral code (first order only)',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark.withValues(alpha: 0.75),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller.referralCodeController,
+                textCapitalization: TextCapitalization.characters,
+                style: _deliveryInputTextStyle,
+                cursorColor: AppColors.primary,
+                onChanged: (_) => controller.scheduleReferralPreviewRefresh(),
+                decoration:
+                    _deliveryFieldDecoration(
+                      label: 'Enter referral code',
+                      hint: 'Friend\'s code',
+                    ).copyWith(
+                      hintStyle: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textDark.withValues(alpha: 0.35),
+                        fontSize: 14,
+                      ),
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'On your first order with a valid code: free delivery for you. '
+                'Your friend earns PKR ${kReferralRewardPkr.toStringAsFixed(0)} store credit after '
+                'this order is marked Delivered (and paid if required).',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textDark.withValues(alpha: 0.45),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Wallet balance',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'PKR ${bal.toStringAsFixed(0)} available to spend (from referrals & rewards)',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textDark.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: controller.applyWalletBalance.value && canUseWallet,
+                  onChanged: canUseWallet
+                      ? (v) => controller.applyWalletBalance.value = v
+                      : null,
+                ),
+              ],
+            ),
+            if (!canUseWallet && controller.items.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  bal <= 0.009
+                      ? 'No balance yet — earn from Refer & Earn when friends’ orders complete.'
+                      : 'Add items to apply wallet.',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 11,
+                    color: AppColors.textDark.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+
   // ── Order summary ───────────────────────────────────────────────────────────
 
   Widget _buildOrderSummary() {
@@ -453,12 +621,21 @@ class CartView extends GetView<CartController> {
       ProductService.to.globalDiscountPercent.value;
       ProductService.to.productsVersion.value;
       DiscountService.to.currentDiscountPercent.value;
+      WalletService.to.balance.value;
+      controller.applyWalletBalance.value;
+      controller.referralPreviewFreeDelivery.value;
+      controller.selectedPayment.value;
       final gross = controller.invoiceGrossSubtotal;
       final prodSav = controller.invoiceProductSavingsTotal;
       final globSav = controller.invoiceGlobalSavingsTotal;
       final userSav = controller.userDiscountAmount;
       final userPct = controller.userDiscountPercent;
-      final hasSplit = prodSav > 0.009 || globSav > 0.009 || userSav > 0.009;
+      final bankSav = controller.bankTransferDiscountAmount;
+      final hasSplit =
+          prodSav > 0.009 ||
+          globSav > 0.009 ||
+          userSav > 0.009 ||
+          bankSav > 0.009;
 
       return Container(
         padding: const EdgeInsets.all(16),
@@ -500,11 +677,73 @@ class CartView extends GetView<CartController> {
                   value: userSav,
                 ),
               ],
+              if (bankSav > 0.009) ...[
+                const SizedBox(height: 8),
+                _SummaryDiscountRow(
+                  label:
+                      'Bank transfer only (${kBankTransferExtraDiscountPercent.toStringAsFixed(0)}%)',
+                  value: bankSav,
+                ),
+              ],
               const Divider(height: 20),
             ] else
-              _SummaryRow(label: 'Subtotal', value: controller.subtotal),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SummaryRow(label: 'Subtotal', value: controller.subtotal),
+                  if (bankSav > 0.009) ...[
+                    const SizedBox(height: 8),
+                    _SummaryDiscountRow(
+                      label:
+                          'Bank transfer only (${kBankTransferExtraDiscountPercent.toStringAsFixed(0)}%)',
+                      value: bankSav,
+                    ),
+                  ],
+                ],
+              ),
             const SizedBox(height: 4),
-            _SummaryRow(label: 'Total', value: controller.total, isTotal: true),
+            if (controller.referralPreviewFreeDelivery.value) ...[
+              Row(
+                children: [
+                  Icon(
+                    Icons.local_shipping_outlined,
+                    size: 16,
+                    color: AppColors.success.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Delivery — waived with referral (first order)',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (controller.walletAppliedAmount > 0.009) ...[
+              _SummaryRow(
+                label: 'Merchandise total',
+                value: controller.merchandiseTotal,
+              ),
+              const SizedBox(height: 8),
+              _SummaryDiscountRow(
+                label: 'Wallet applied',
+                value: controller.walletAppliedAmount,
+              ),
+              const SizedBox(height: 8),
+            ],
+            _SummaryRow(
+              label: controller.walletAppliedAmount > 0.009
+                  ? 'Amount to pay'
+                  : 'Total',
+              value: controller.payableTotal,
+              isTotal: true,
+            ),
           ],
         ),
       );
@@ -525,6 +764,8 @@ class CartView extends GetView<CartController> {
       AuthService.to.currentUser.value;
       DiscountService.to.currentDiscountPercent.value;
       ProductService.to.productsVersion.value;
+      WalletService.to.balance.value;
+      controller.applyWalletBalance.value;
 
       final hasItems = controller.items.isNotEmpty;
       final loggedIn = AuthService.to.currentUser.value != null;
@@ -535,7 +776,8 @@ class CartView extends GetView<CartController> {
       final deliveryOk = phoneOk && streetOk;
       final isBankTransfer =
           controller.selectedPayment.value == PaymentMethod.bankTransfer;
-      final receiptReady = controller.receiptUploaded.value &&
+      final receiptReady =
+          controller.receiptUploaded.value &&
           controller.receiptUrl.value.trim().isNotEmpty;
       final isPlacing = controller.isPlacing.value;
       final canPlace = controller.isReadyToPlaceOrder;
@@ -552,7 +794,7 @@ class CartView extends GetView<CartController> {
       } else if (isBankTransfer && !receiptReady) {
         hint = 'Upload your bank transfer receipt to continue.';
       } else if (controller.selectedPayment.value == PaymentMethod.cod &&
-          controller.total >= kCodMaxPkr) {
+          controller.payableTotal >= kCodMaxPkr) {
         hint =
             'COD is only under PKR ${kCodMaxPkr.toStringAsFixed(0)}. Use bank transfer or reduce total.';
       }

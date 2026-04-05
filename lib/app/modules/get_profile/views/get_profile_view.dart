@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/app/modules/rewards/views/rewards_view.dart';
+import 'package:md_scents_app/app/modules/rewards/views/rewards_view.dart';
 import 'package:get/get.dart';
 import '../controllers/get_profile_controller.dart';
 

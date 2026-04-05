@@ -11,10 +11,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // JWT claim OR hard-coded UIDs OR Firestore users/{uid}.role == 'admin' (matches app AuthService).
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.admin == true ||
-        request.auth.uid in adminUidList()
+        request.auth.uid in adminUidList() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
@@ -36,13 +39,90 @@ service cloud.firestore {
         && request.resource.data.cancellationUnreadForUser == false;
     }
 
+    // referralCode / referredBy: set once for owner; admin unrestricted via isAdmin() on update.
+    function userReferralFieldsOk() {
+      return (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['referralCode'])
+          || (!resource.data.keys().hasAny(['referralCode'])
+              && request.resource.data.referralCode is string)
+          || resource.data.referralCode == request.resource.data.referralCode)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['referredBy'])
+            || (!resource.data.keys().hasAny(['referredBy'])
+                && request.resource.data.referredBy is string)
+            || resource.data.referredBy == request.resource.data.referredBy);
+    }
+
+    function oldWalletBalance() {
+      return resource.data.keys().hasAny(['wallet'])
+        && resource.data.wallet.keys().hasAny(['balance'])
+        && resource.data.wallet.balance is number
+        ? resource.data.wallet.balance
+        : 0;
+    }
+
+    function oldWalletPending() {
+      return resource.data.keys().hasAny(['wallet'])
+        && resource.data.wallet.keys().hasAny(['pendingRewards'])
+        && resource.data.wallet.pendingRewards is number
+        ? resource.data.wallet.pendingRewards
+        : 0;
+    }
+
+    // Owner: wallet balance only decreases; pending unchanged. Admin: any wallet change.
+    function userWalletOk() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['wallet'])
+        || isAdmin()
+        || (request.resource.data.wallet.balance is number
+            && request.resource.data.wallet.pendingRewards is number
+            && request.resource.data.wallet.balance <= oldWalletBalance() + 0.001
+            && request.resource.data.wallet.balance >= 0
+            && request.resource.data.wallet.pendingRewards == oldWalletPending());
+    }
+
+    function userOwnerUpdateOk() {
+      return userReferralFieldsOk() && userWalletOk();
+    }
+
+    function orderCreateClientOk() {
+      return !request.resource.data.keys().hasAny([
+        'referralServerProcessed',
+        'walletDebitConfirmed',
+        'walletDebitReversed'
+      ]);
+    }
+
+    // Collection group queries (e.g. collectionGroup('orders') / collectionGroup('referrals')).
+    match /{path=**}/orders/{orderId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /{path=**}/referrals/{referralId} {
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+    }
+
     match /orders/{orderId} {
       allow read, write: if false;
+    }
+
+    match /referralCodes/{code} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt']);
+      allow update, delete: if false;
     }
 
     match /discounts/{docId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
+    }
+
+    // OneSignal: admins mirror player id here so signed-in customers can read targets
+    // for new-order push (cannot query users by role).
+    match /admin_push_targets/{uid} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin() && request.auth.uid == uid;
     }
 
     match /products/{productId} {
@@ -59,14 +139,27 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if isAdmin() || (isOwner(userId) && userOwnerUpdateOk());
       allow delete: if isAdmin();
 
       match /orders/{orderId} {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId)
-          && request.resource.data.userId == userId;
+          && request.resource.data.userId == userId
+          && orderCreateClientOk();
         allow update: if isAdmin() || (isOwner(userId) && orderOnlyCancellationReadFlag());
+        allow delete: if isAdmin();
+      }
+
+      match /referrals/{referralId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isSignedIn()
+          && request.resource.data.referredUserId == request.auth.uid
+          && request.resource.data.referrerUid == userId
+          && request.resource.data.keys().hasAll([
+            'referredUserId', 'referrerUid', 'orderId', 'status', 'rewardAmount', 'createdAt'
+          ]);
+        allow update: if isAdmin();
         allow delete: if isAdmin();
       }
 

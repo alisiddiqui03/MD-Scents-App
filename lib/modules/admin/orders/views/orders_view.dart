@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../app/services/order_service.dart';
+
 import '../controllers/orders_controller.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/data/models/order.dart';
-import '../../../../app/services/order_service.dart';
 import '../../../../app/utils/order_action_time.dart';
 import '../../../../app/widgets/loading_overlay.dart';
 
@@ -17,22 +18,57 @@ class OrdersView extends GetView<OrdersController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Orders')),
+      appBar: AppBar(
+        title: const Text('Orders'),
+        actions: [
+          Obx(() {
+            final n = OrderService.to.orders
+                .where((o) => o.status == OrderStatus.cancelled)
+                .length;
+            if (n == 0) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: TextButton.icon(
+                onPressed: controller.confirmDeleteAllCancelled,
+                icon: Icon(
+                  Icons.delete_sweep_outlined,
+                  size: 20,
+                  color: AppColors.danger.withValues(alpha: 0.9),
+                ),
+                label: Text(
+                  'Clear cancelled ($n)',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.danger.withValues(alpha: 0.95),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
       body: Obx(
         () => LoadingOverlay(
-          isLoading: controller.isUpdatingPaid.value ||
+          isLoading:
+              controller.isUpdatingPaid.value ||
               controller.isUpdatingStatus.value ||
-              controller.isCancellingOrder.value,
+              controller.isCancellingOrder.value ||
+              controller.isDeletingOrder.value,
           title: controller.isCancellingOrder.value
               ? 'Cancelling order'
+              : controller.isDeletingOrder.value
+              ? 'Removing order(s)'
               : (controller.isUpdatingPaid.value
-                  ? 'Updating payment'
-                  : (controller.isUpdatingStatus.value
-                      ? 'Updating order'
-                      : null)),
-          subtitle: controller.isUpdatingPaid.value ||
+                    ? 'Updating payment'
+                    : (controller.isUpdatingStatus.value
+                          ? 'Updating order'
+                          : null)),
+          subtitle:
+              controller.isUpdatingPaid.value ||
                   controller.isUpdatingStatus.value ||
-                  controller.isCancellingOrder.value
+                  controller.isCancellingOrder.value ||
+                  controller.isDeletingOrder.value
               ? 'Syncing with your store…'
               : null,
           child: Container(
@@ -290,7 +326,8 @@ class _OrdersFiltersHeader extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Obx(() {
-              final hasFilter = controller.searchQuery.value.isNotEmpty ||
+              final hasFilter =
+                  controller.searchQuery.value.isNotEmpty ||
                   controller.dateRange.value != null ||
                   controller.statusFilter.value != null;
               if (!hasFilter) return const SizedBox.shrink();
@@ -317,8 +354,7 @@ class _OrdersFiltersHeader extends StatelessWidget {
                 _StatusFilterChip(
                   label: 'Pending',
                   selected: selected == OrderStatus.pending,
-                  onTap: () =>
-                      controller.setStatusFilter(OrderStatus.pending),
+                  onTap: () => controller.setStatusFilter(OrderStatus.pending),
                 ),
                 const SizedBox(width: 8),
                 _StatusFilterChip(
@@ -330,8 +366,7 @@ class _OrdersFiltersHeader extends StatelessWidget {
                 _StatusFilterChip(
                   label: 'Shipped',
                   selected: selected == OrderStatus.shipped,
-                  onTap: () =>
-                      controller.setStatusFilter(OrderStatus.shipped),
+                  onTap: () => controller.setStatusFilter(OrderStatus.shipped),
                 ),
                 const SizedBox(width: 8),
                 _StatusFilterChip(
@@ -432,7 +467,7 @@ class _OrderTile extends GetView<OrdersController> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final card = Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       elevation: 0,
@@ -531,6 +566,17 @@ class _OrderTile extends GetView<OrdersController> {
                         ),
                       ],
                     ),
+                    if (order.status == OrderStatus.cancelled) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Swipe right → to delete',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.textDark.withValues(alpha: 0.38),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -548,6 +594,60 @@ class _OrderTile extends GetView<OrdersController> {
         ),
       ),
     );
+
+    if (order.status != OrderStatus.cancelled) {
+      return card;
+    }
+
+    return Dismissible(
+      key: ValueKey('adm-del-${order.firestorePath ?? order.id}'),
+      direction: DismissDirection.startToEnd,
+      background: Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 20),
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppColors.danger,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Icon(
+          Icons.delete_outline_rounded,
+          color: Colors.white,
+          size: 28,
+        ),
+      ),
+      confirmDismiss: (direction) async {
+        final ok = await Get.dialog<bool>(
+          AlertDialog(
+            title: const Text('Delete cancelled order?'),
+            content: Text(
+              'Remove this order from the admin list permanently. This cannot be undone.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 12,
+                color: AppColors.textDark.withValues(alpha: 0.75),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(result: false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Get.back(result: true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+        if (ok != true) return false;
+        return controller.tryDeleteCancelledOrder(order);
+      },
+      child: card,
+    );
   }
 
   void _showDetails(BuildContext context) {
@@ -557,7 +657,10 @@ class _OrderTile extends GetView<OrdersController> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       isScrollControlled: true,
-      builder: (_) {
+      // Use this context for Navigator.pop after async work. Popping the parent
+      // (OrdersView) context stays mounted after the sheet closes and a second
+      // pop removes /admin — black screen.
+      builder: (sheetContext) {
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.6,
@@ -610,9 +713,7 @@ class _OrderTile extends GetView<OrdersController> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    order.customerEmail.isNotEmpty
-                        ? order.customerEmail
-                        : '—',
+                    order.customerEmail.isNotEmpty ? order.customerEmail : '—',
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textDark.withValues(alpha: 0.75),
                       fontSize: 13,
@@ -659,6 +760,65 @@ class _OrderTile extends GetView<OrdersController> {
                       fontSize: 13,
                     ),
                   ),
+                  if (order.referralFreeDelivery) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.local_shipping_outlined,
+                            size: 16,
+                            color: AppColors.success,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Free delivery (referral)',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (order.referredBy != null &&
+                      order.referredBy!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Referral',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Referrer user ID: ${order.referredBy}',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textDark.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Reward status: ${order.referralStatusLabel}',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
                   if (order.status == OrderStatus.cancelled &&
                       (order.cancellationReason?.trim().isNotEmpty ??
                           false)) ...[
@@ -698,7 +858,9 @@ class _OrderTile extends GetView<OrdersController> {
                               _fmtCancelled(order.cancelledAt!),
                               style: AppTextStyles.bodyMedium.copyWith(
                                 fontSize: 11,
-                                color: AppColors.textDark.withValues(alpha: 0.5),
+                                color: AppColors.textDark.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                             ),
                           ],
@@ -759,49 +921,61 @@ class _OrderTile extends GetView<OrdersController> {
                     SizedBox(
                       width: double.infinity,
                       child: Obx(
-                        () => FilledButton.icon(
-                          onPressed: controller.isUpdatingPaid.value
-                              ? null
-                              : () async {
-                                  await controller.setOrderPaid(order, true);
-                                  if (context.mounted) Navigator.pop(context);
-                                },
-                          icon: controller.isUpdatingPaid.value
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                        () {
+                          final busy = controller.isUpdatingPaid.value ||
+                              controller.isUpdatingStatus.value;
+                          return FilledButton.icon(
+                            onPressed: busy
+                                ? null
+                                : () async {
+                                    await controller.setOrderPaid(order, true);
+                                    if (sheetContext.mounted) {
+                                      Navigator.of(sheetContext).pop();
+                                    }
+                                  },
+                            icon: controller.isUpdatingPaid.value
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.check_circle_outline,
+                                    size: 20,
                                   ),
-                                )
-                              : const Icon(
-                                  Icons.check_circle_outline,
-                                  size: 20,
-                                ),
-                          label: const Text('Confirm payment received'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
+                            label: const Text('Confirm payment received'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.success,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          );
+                        },
                       ),
                     )
                   else
                     SizedBox(
                       width: double.infinity,
                       child: Obx(
-                        () => OutlinedButton.icon(
-                          onPressed: controller.isUpdatingPaid.value
-                              ? null
-                              : () async {
-                                  await controller.setOrderPaid(order, false);
-                                  if (context.mounted) Navigator.pop(context);
-                                },
-                          icon: const Icon(Icons.undo, size: 18),
-                          label: const Text('Mark as unpaid (mistake)'),
-                        ),
+                        () {
+                          final busy = controller.isUpdatingPaid.value ||
+                              controller.isUpdatingStatus.value;
+                          return OutlinedButton.icon(
+                            onPressed: busy
+                                ? null
+                                : () async {
+                                    await controller.setOrderPaid(order, false);
+                                    if (sheetContext.mounted) {
+                                      Navigator.of(sheetContext).pop();
+                                    }
+                                  },
+                            icon: const Icon(Icons.undo, size: 18),
+                            label: const Text('Mark as unpaid (mistake)'),
+                          );
+                        },
                       ),
                     ),
                   const SizedBox(height: 16),
@@ -836,6 +1010,29 @@ class _OrderTile extends GetView<OrdersController> {
                     ),
                   ),
                   const Divider(height: 24),
+                  if (order.bankTransferDiscountAmount > 0.009) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Bank transfer discount (5%)',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontSize: 12,
+                            color: AppColors.textDark.withValues(alpha: 0.65),
+                          ),
+                        ),
+                        Text(
+                          '− PKR ${order.bankTransferDiscountAmount.toStringAsFixed(0)}',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -856,32 +1053,43 @@ class _OrderTile extends GetView<OrdersController> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: OrderStatus.values
-                        .where((s) => s != OrderStatus.cancelled)
-                        .map((s) {
-                      final isSelected = s == order.status;
-                      return ChoiceChip(
-                        label: Text(_statusLabel(s)),
-                        selected: isSelected,
-                        onSelected: (selected) async {
-                          if (!selected) return;
-                          await controller.updateStatus(order, s);
-                          if (context.mounted) Navigator.pop(context);
-                        },
-                      );
-                    }).toList(),
-                  ),
+                  Obx(() {
+                    final busy = controller.isUpdatingPaid.value ||
+                        controller.isUpdatingStatus.value;
+                    return Wrap(
+                      spacing: 8,
+                      children: OrderStatus.values
+                          .where((s) => s != OrderStatus.cancelled)
+                          .map((s) {
+                            final isSelected = s == order.status;
+                            return ChoiceChip(
+                              label: Text(_statusLabel(s)),
+                              selected: isSelected,
+                              onSelected: busy
+                                  ? null
+                                  : (selected) async {
+                                      if (!selected) return;
+                                      await controller.updateStatus(order, s);
+                                      if (sheetContext.mounted) {
+                                        Navigator.of(sheetContext).pop();
+                                      }
+                                    },
+                            );
+                          })
+                          .toList(),
+                    );
+                  }),
                   if (order.status != OrderStatus.cancelled) ...[
                     const SizedBox(height: 12),
                     Obx(
                       () => SizedBox(
                         width: double.infinity,
                         child: OutlinedButton.icon(
-                          onPressed: controller.isCancellingOrder.value
+                          onPressed: controller.isCancellingOrder.value ||
+                                  controller.isUpdatingPaid.value ||
+                                  controller.isUpdatingStatus.value
                               ? null
-                              : () => _promptCancelOrder(context, order),
+                              : () => _promptCancelOrder(sheetContext, order),
                           icon: const Icon(Icons.cancel_outlined, size: 20),
                           label: const Text('Cancel order'),
                           style: OutlinedButton.styleFrom(
@@ -1015,7 +1223,10 @@ class _OrderTile extends GetView<OrdersController> {
     try {
       if (ok == true) {
         await controller.cancelOrderWithReason(order, reasonCtrl.text.trim());
-        if (context.mounted) Navigator.pop(context);
+        // [context] is the modal sheet context — pop only the sheet, not /admin.
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
       }
     } finally {
       reasonCtrl.dispose();

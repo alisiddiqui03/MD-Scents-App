@@ -22,6 +22,10 @@ import '../../modules/user/profile/views/profile_view.dart';
 import '../../modules/user/orders/views/orders_view.dart' as user_orders;
 import '../../modules/user/orders/bindings/user_orders_binding.dart';
 import '../../modules/user/order_confirm/views/order_confirm_view.dart';
+import '../../modules/user/refer_earn/bindings/refer_earn_binding.dart';
+import '../../modules/user/refer_earn/views/refer_earn_view.dart';
+import '../../modules/user/wallet/bindings/wallet_binding.dart';
+import '../../modules/user/wallet/views/wallet_view.dart';
 import '../../modules/user/wishlist/bindings/wishlist_binding.dart';
 import '../../modules/user/wishlist/views/wishlist_view.dart';
 import '../../modules/user/addresses/bindings/addresses_binding.dart';
@@ -41,6 +45,10 @@ import '../../modules/admin/inventory/bindings/inventory_binding.dart';
 import '../../modules/admin/inventory/views/inventory_view.dart';
 import '../../modules/admin/orders/bindings/orders_binding.dart';
 import '../../modules/admin/orders/views/orders_view.dart';
+import '../../modules/admin/referrals/bindings/admin_referral_detail_binding.dart';
+import '../../modules/admin/referrals/bindings/admin_referrals_binding.dart';
+import '../../modules/admin/referrals/views/admin_referral_order_detail_view.dart';
+import '../../modules/admin/referrals/views/admin_referrals_view.dart';
 import '../../modules/admin/settings/bindings/admin_settings_binding.dart';
 import '../../modules/admin/settings/views/admin_settings_view.dart';
 import '../../modules/admin/ads_discount/bindings/admin_ads_discount_binding.dart';
@@ -134,6 +142,16 @@ class AppPages {
       name: _Paths.USER_ORDER_CONFIRM,
       page: () => const OrderConfirmView(),
     ),
+    GetPage(
+      name: _Paths.USER_REFER_EARN,
+      page: () => const ReferEarnView(),
+      binding: ReferEarnBinding(),
+    ),
+    GetPage(
+      name: _Paths.USER_WALLET,
+      page: () => const WalletView(),
+      binding: WalletBinding(),
+    ),
 
     // Admin base + tabs
     GetPage(
@@ -160,6 +178,16 @@ class AppPages {
       name: _Paths.ADMIN_ORDERS,
       page: () => const OrdersView(),
       binding: OrdersBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_REFERRALS,
+      page: () => const AdminReferralsView(),
+      binding: AdminReferralsBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_REFERRAL_ORDER_DETAIL,
+      page: () => const AdminReferralOrderDetailView(),
+      binding: AdminReferralDetailBinding(),
     ),
     GetPage(
       name: _Paths.ADMIN_SETTINGS,

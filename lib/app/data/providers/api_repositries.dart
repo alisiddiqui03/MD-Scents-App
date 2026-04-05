@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_application_1/app/core/constant/http_constants.dart';
-import 'package:flutter_application_1/app/core/services/api_services.dart';
-import 'package:flutter_application_1/app/data/models/auth_model.dart';
-import 'package:flutter_application_1/app/data/models/get_profile_model.dart';
-import 'package:flutter_application_1/app/data/models/rewards_model.dart';
+import 'package:md_scents_app/app/core/constant/http_constants.dart';
+import 'package:md_scents_app/app/core/services/api_services.dart';
+import 'package:md_scents_app/app/data/models/auth_model.dart';
+import 'package:md_scents_app/app/data/models/get_profile_model.dart';
+import 'package:md_scents_app/app/data/models/rewards_model.dart';
 
 class ApiRepositories {
   Future<AuthModel> login({
@@ -21,7 +21,6 @@ class ApiRepositories {
       throw Exception(response.data['message'] ?? "Login failed");
     }
   }
-
 
   Future<GetProfile> getCustomerProfile() async {
     try {

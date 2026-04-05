@@ -629,6 +629,44 @@ class _OrderCard extends StatelessWidget {
                   ),
                 ),
 
+                if (order.referralFreeDelivery) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.local_shipping_outlined,
+                          size: 18,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Free delivery (referral)',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 if (order.status == OrderStatus.cancelled &&
                     (order.cancellationReason?.trim().isNotEmpty ?? false)) ...[
                   const SizedBox(height: 8),

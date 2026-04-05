@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
@@ -12,7 +13,13 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/services/auth_service.dart';
 import '../../../../app/services/cloudinary_service.dart';
 import '../../../../app/services/discount_service.dart';
+import '../../../../app/config/referral_constants.dart';
+import '../../../../app/services/order_service.dart';
 import '../../../../app/services/product_service.dart';
+import '../../../../app/services/referral_service.dart';
+import '../../../../app/services/wallet_service.dart';
+import '../../../../services/onesignal_service.dart';
+import '../../../../app/utils/device_fingerprint.dart';
 import '../../../../app/data/models/delivery_address.dart';
 import '../../../../app/data/models/order.dart';
 import '../../../../app/data/models/product.dart';
@@ -20,6 +27,9 @@ import '../widgets/delivery_address_picker_sheet.dart';
 
 /// COD is only allowed when order total is strictly below this (PKR).
 const double kCodMaxPkr = 10000;
+
+/// Extra discount when user pays via bank transfer (on top of welcome/ads %).
+const double kBankTransferExtraDiscountPercent = 5;
 
 class CartItem {
   final String id;
@@ -48,6 +58,19 @@ class CartController extends GetxController {
   final isUploadingReceipt = false.obs;
   final selectedReceiptFile = Rx<File?>(null);
   final isPlacing = false.obs;
+
+  /// 0 = unknown (loading), otherwise count of past orders for referral UI.
+  final completedOrderCount = (-1).obs;
+  final applyWalletBalance = false.obs;
+  final referralCodeController = TextEditingController();
+
+  /// True when current checkout has a validated referral (free delivery messaging).
+  final referralFreeDeliveryThisCheckout = false.obs;
+
+  /// Updated while typing (debounced) so the order summary can show referral benefits before place order.
+  final referralPreviewFreeDelivery = false.obs;
+
+  Timer? _referralPreviewDebounce;
 
   final items = <CartItem>[].obs;
   final CloudinaryService _cloudinaryService = CloudinaryService();
@@ -93,6 +116,7 @@ class CartController extends GetxController {
       Future.microtask(_silentPrefillDeliveryFromFirestore);
     });
     _authWorker = ever(AuthService.to.currentUser, (_) {
+      Future.microtask(_refreshOrderCount);
       if (items.isEmpty || _didSilentPrefillThisFill) return;
       Future.microtask(_silentPrefillDeliveryFromFirestore);
     });
@@ -100,6 +124,55 @@ class CartController extends GetxController {
       _discountService.currentDiscountPercent,
       (_) => _enforceCodRuleFromCartChange(),
     );
+    if (AuthService.to.currentUser.value != null) {
+      Future.microtask(_refreshOrderCount);
+    }
+  }
+
+  Future<void> _refreshOrderCount() async {
+    final uid = AuthService.to.currentUser.value?.uid;
+    if (uid == null) {
+      completedOrderCount.value = -1;
+      referralPreviewFreeDelivery.value = false;
+      return;
+    }
+    try {
+      final list = await OrderService.to.fetchUserOrdersOnce(uid);
+      completedOrderCount.value = list.length;
+    } catch (_) {
+      completedOrderCount.value = 0;
+    }
+    scheduleReferralPreviewRefresh();
+  }
+
+  /// Debounced validation of the referral field for checkout UI (free delivery line).
+  void scheduleReferralPreviewRefresh() {
+    _referralPreviewDebounce?.cancel();
+    _referralPreviewDebounce = Timer(const Duration(milliseconds: 420), () {
+      Future.microtask(_refreshReferralPreview);
+    });
+  }
+
+  Future<void> _refreshReferralPreview() async {
+    final user = AuthService.to.currentUser.value;
+    if (user == null) {
+      referralPreviewFreeDelivery.value = false;
+      return;
+    }
+    final raw = referralCodeController.text.trim().toUpperCase();
+    if (raw.isEmpty) {
+      referralPreviewFreeDelivery.value = false;
+      return;
+    }
+    final isFirstOrderStrict = completedOrderCount.value == 0;
+    final v = await ReferralService.to.validateForFirstOrder(
+      buyerUid: user.uid,
+      codeEntered: raw,
+      isFirstOrder: isFirstOrderStrict,
+      buyerExistingReferralCode: user.referralCode,
+      buyerReferredBy: user.referredBy,
+    );
+    referralPreviewFreeDelivery.value = v.appliesReward;
   }
 
   void notifyDeliveryChanged() => deliveryInputVersion.value++;
@@ -128,6 +201,8 @@ class CartController extends GetxController {
     deliveryStreetController.dispose();
     deliveryCityController.dispose();
     deliveryPostalController.dispose();
+    referralCodeController.dispose();
+    _referralPreviewDebounce?.cancel();
     super.onClose();
   }
 
@@ -216,7 +291,7 @@ class CartController extends GetxController {
 
   void _enforceCodRuleFromCartChange() {
     if (selectedPayment.value != PaymentMethod.cod) return;
-    if (total < kCodMaxPkr) return;
+    if (payableTotal < kCodMaxPkr) return;
     selectedPayment.value = PaymentMethod.bankTransfer;
   }
 
@@ -239,10 +314,36 @@ class CartController extends GetxController {
 
   double get userDiscountAmount => subtotal * (userDiscountPercent / 100);
 
+  /// Subtotal after your discount % (welcome / ads), before bank-only extra discount.
   double get total => (subtotal - userDiscountAmount).clamp(0, double.infinity);
 
+  /// Extra 5% off when **Bank transfer** is selected (stacked on top of your discount).
+  double get bankTransferDiscountAmount {
+    if (selectedPayment.value != PaymentMethod.bankTransfer) return 0;
+    return total * (kBankTransferExtraDiscountPercent / 100);
+  }
+
+  /// Merchandise total before store credit (matches order `merchandiseTotal`).
+  double get merchandiseTotal =>
+      (total - bankTransferDiscountAmount).clamp(0, double.infinity);
+
+  /// PKR applied from wallet for this checkout (server debits the same amount).
+  double get walletAppliedAmount {
+    if (!applyWalletBalance.value) return 0;
+    final bal = WalletService.to.balance.value;
+    if (bal <= 0) return 0;
+    return bal.clamp(0, merchandiseTotal);
+  }
+
+  /// Amount the customer still pays after wallet (COD / bank).
+  double get payableTotal =>
+      (merchandiseTotal - walletAppliedAmount).clamp(0, double.infinity);
+
+  bool get isFirstOrderForReferralUi =>
+      completedOrderCount.value == 0 || completedOrderCount.value == -1;
+
   /// Place Order only when cart has items, user is signed in, delivery is filled,
-  /// COD is valid for total, and bank transfer has an uploaded receipt URL.
+  /// COD is valid for payable total, and bank transfer has an uploaded receipt URL.
   bool get isReadyToPlaceOrder {
     if (isPlacing.value) return false;
     if (AuthService.to.currentUser.value == null) return false;
@@ -250,7 +351,7 @@ class CartController extends GetxController {
     final phone = deliveryPhoneController.text.trim();
     final street = deliveryStreetController.text.trim();
     if (phone.isEmpty || street.isEmpty) return false;
-    if (selectedPayment.value == PaymentMethod.cod && total >= kCodMaxPkr) {
+    if (selectedPayment.value == PaymentMethod.cod && payableTotal >= kCodMaxPkr) {
       return false;
     }
     if (selectedPayment.value == PaymentMethod.bankTransfer) {
@@ -412,7 +513,7 @@ class CartController extends GetxController {
   }
 
   void selectPayment(PaymentMethod method) {
-    if (method == PaymentMethod.cod && total >= kCodMaxPkr) {
+    if (method == PaymentMethod.cod && payableTotal >= kCodMaxPkr) {
       selectedPayment.value = PaymentMethod.bankTransfer;
       return;
     }
@@ -514,7 +615,7 @@ class CartController extends GetxController {
     }
 
     final wantsCod = selectedPayment.value == PaymentMethod.cod;
-    if (wantsCod && total >= kCodMaxPkr) {
+    if (wantsCod && payableTotal >= kCodMaxPkr) {
       return;
     }
 
@@ -526,9 +627,15 @@ class CartController extends GetxController {
       final globalSavBeforeOrder = invoiceGlobalSavingsTotal;
       final userSavBeforeOrder = userDiscountAmount;
 
+      final merch = merchandiseTotal;
+      final bankDisc = bankTransferDiscountAmount;
+      final walletApplied = walletAppliedAmount;
+      final payTotal = payableTotal;
+
       final orderItems = items
           .map(
             (i) => OrderItem(
+              productId: i.id,
               productName: i.name,
               quantity: i.qty.value,
               price: i.unitPrice,
@@ -537,13 +644,51 @@ class CartController extends GetxController {
           .toList();
 
       final isCod = wantsCod;
-      final orderTotalVal = total;
+      final orderTotalVal = payTotal;
       final receipt = receiptUrl.value.trim();
       final city = deliveryCityController.text.trim();
       final postal = deliveryPostalController.text.trim();
       // COD: paid on delivery → isPaid false until you confirm in admin.
       // Bank: receipt uploaded → isPaid true (payment proof received).
       final isPaid = !isCod && receipt.isNotEmpty;
+
+      final isFirstOrderStrict = completedOrderCount.value == 0;
+      final refRaw = referralCodeController.text.trim().toUpperCase();
+      final deviceFp = await getReferralDeviceFingerprint();
+
+      final refVal = await ReferralService.to.validateForFirstOrder(
+        buyerUid: user.uid,
+        codeEntered: refRaw.isEmpty ? null : refRaw,
+        isFirstOrder: isFirstOrderStrict,
+        buyerExistingReferralCode: user.referralCode,
+        buyerReferredBy: user.referredBy,
+      );
+
+      if (refRaw.isNotEmpty && !refVal.appliesReward) {
+        isPlacing.value = false;
+        Get.snackbar(
+          'Referral code',
+          refVal.message ?? 'This referral code cannot be used.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.danger,
+          colorText: Colors.white,
+          borderRadius: 12,
+          margin: const EdgeInsets.all(12),
+        );
+        return;
+      }
+
+      referralFreeDeliveryThisCheckout.value = refVal.appliesReward;
+
+      DocumentReference<Map<String, dynamic>>? referralDocRef;
+      String? referralRecordId;
+      if (refVal.appliesReward && refVal.referrerUid != null) {
+        referralDocRef = FirestoreService.usersCollection
+            .doc(refVal.referrerUid!)
+            .collection('referrals')
+            .doc();
+        referralRecordId = referralDocRef.id;
+      }
 
       final orderRef = FirestoreService.usersOrdersRef(user.uid).doc();
       final placedAt = DateTime.now();
@@ -560,6 +705,19 @@ class CartController extends GetxController {
         isPaid: isPaid,
         paymentReceiptUrl: isCod ? null : (receipt.isEmpty ? null : receipt),
         items: orderItems,
+        merchandiseTotal: merch,
+        walletAppliedAmount: walletApplied,
+        bankTransferDiscountAmount: bankDisc,
+        referralCodeEntered: refRaw.isNotEmpty ? refRaw : null,
+        referralDeviceId: deviceFp,
+        referredBy: refVal.appliesReward ? refVal.referrerUid : null,
+        referralUsed: refRaw.isNotEmpty,
+        referralApplied: refVal.appliesReward,
+        isFirstOrderForUser: isFirstOrderStrict,
+        referralRewardPending: refVal.appliesReward,
+        referralRewardGranted: false,
+        referralRecordId: referralRecordId,
+        referralFreeDelivery: refVal.appliesReward,
         deliveryPhone: phone,
         deliveryStreet: street,
         deliveryCity: city,
@@ -585,8 +743,62 @@ class CartController extends GetxController {
             'stock': FieldValue.increment(-item.qty.value),
           });
         }
+
+        final userRef = FirestoreService.usersCollection.doc(user.uid);
+        final userMerge = <String, dynamic>{};
+
+        if (walletApplied > 0.009) {
+          final uSnap = await txn.get(userRef);
+          final w = uSnap.data()?['wallet'];
+          var bal = 0.0;
+          var pend = 0.0;
+          if (w is Map) {
+            bal = (w['balance'] as num?)?.toDouble() ?? 0;
+            pend = (w['pendingRewards'] as num?)?.toDouble() ?? 0;
+          }
+          if (bal + 1e-6 < walletApplied) {
+            throw StateError('Insufficient store credit.');
+          }
+          userMerge['wallet'] = {
+            'balance': bal - walletApplied,
+            'pendingRewards': pend,
+          };
+        }
+
+        if (refVal.appliesReward && refVal.referrerUid != null) {
+          userMerge['referredBy'] = refVal.referrerUid;
+        }
+
+        if (userMerge.isNotEmpty) {
+          txn.set(userRef, userMerge, SetOptions(merge: true));
+        }
+
+        if (refVal.appliesReward &&
+            referralDocRef != null &&
+            refVal.referrerUid != null) {
+          txn.set(referralDocRef, {
+            'referredUserId': user.uid,
+            'referrerUid': refVal.referrerUid,
+            'orderId': orderRef.id,
+            'referredUserName': (user.displayName != null &&
+                    user.displayName!.trim().isNotEmpty)
+                ? user.displayName!.trim()
+                : (user.email ?? 'Customer'),
+            'referredUserEmail': user.email ?? '',
+            'status': 'pending',
+            'rewardAmount': kReferralRewardPkr,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+
         txn.set(orderRef, order.toMap());
       });
+
+      try {
+        await OneSignalService.notifyAdmin(orderRef.id);
+      } catch (e, st) {
+        debugPrint('notifyAdmin: $e\n$st');
+      }
 
       await FirestoreService.usersCollection.doc(user.uid).set({
         'lastDeliveryPhone': phone,
@@ -594,6 +806,10 @@ class CartController extends GetxController {
         'lastDeliveryCity': city,
         'lastDeliveryPostalCode': postal,
       }, SetOptions(merge: true));
+
+      if (refVal.appliesReward) {
+        await AuthService.to.refreshProfile();
+      }
 
       final orderId = orderRef.id;
 
@@ -606,9 +822,10 @@ class CartController extends GetxController {
       receiptUrl.value = '';
       selectedReceiptFile.value = null;
       selectedPayment.value = PaymentMethod.cod;
+      referralFreeDeliveryThisCheckout.value = false;
 
       final displayId = '#MD-${orderId.substring(0, 6).toUpperCase()}';
-      final orderTotal = 'PKR ${orderTotalVal.toStringAsFixed(0)}';
+      final orderTotal = 'PKR ${payTotal.toStringAsFixed(0)}';
       final count = orderItems.length;
 
       Get.offNamed(

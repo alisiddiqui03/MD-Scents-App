@@ -7,6 +7,7 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/services/product_service.dart';
+import '../../../../app/services/wallet_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/widgets/app_branded_loading.dart';
@@ -31,6 +32,8 @@ class ProfileView extends GetView<ProfileController> {
               child: Column(
                 children: [
                   const SizedBox(height: 16),
+                  _buildWalletCard(),
+                  const SizedBox(height: 14),
                   _buildOrderStatsRow(),
                   if (user.isAdmin) ...[
                     const SizedBox(height: 14),
@@ -139,6 +142,86 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
+  Widget _buildWalletCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Obx(() {
+        WalletService.to.balance.value;
+        WalletService.to.pendingRewards.value;
+        final bal = WalletService.to.balance.value;
+        final pend = WalletService.to.pendingRewards.value;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Get.toNamed(Routes.USER_WALLET),
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.account_balance_wallet_outlined,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'My Wallet',
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'PKR ${bal.toStringAsFixed(0)} available'
+                            '${pend > 0.009 ? ' · PKR ${pend.toStringAsFixed(0)} pending' : ''} · Tap for history',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textDark.withValues(alpha: 0.55),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textDark.withValues(alpha: 0.35),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _buildOrderStatsRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -223,6 +306,15 @@ class ProfileView extends GetView<ProfileController> {
       final admin = AuthService.to.currentUser.value?.isAdmin == true;
       return _MenuCard(
         items: [
+          _MenuItemTile(
+            item: _MenuItem(
+              icon: Icons.card_giftcard_outlined,
+              label: 'Refer & Earn',
+              subtitle: 'Your code, invites & rewards',
+              color: AppColors.accent,
+              onTap: () => Get.toNamed(Routes.USER_REFER_EARN),
+            ),
+          ),
           Obx(
             () => _MenuItemTile(
               item: _MenuItem(

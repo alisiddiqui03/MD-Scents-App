@@ -2,9 +2,9 @@
 
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/app/theme/app_colors.dart';
-import 'package:flutter_application_1/app/data/providers/api_repositries.dart';
-import 'package:flutter_application_1/app/data/models/get_profile_model.dart';
+import 'package:md_scents_app/app/theme/app_colors.dart';
+import 'package:md_scents_app/app/data/providers/api_repositries.dart';
+import 'package:md_scents_app/app/data/models/get_profile_model.dart';
 
 class GetProfileController extends GetxController {
   final ApiRepositories apiRepo = ApiRepositories();

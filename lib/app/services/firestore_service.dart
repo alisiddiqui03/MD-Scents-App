@@ -42,5 +42,9 @@ class FirestoreService {
 
   static CollectionReference<Map<String, dynamic>> get discountsCollection =>
       instance.collection('discounts');
+
+  /// Global map: referralCodes/{code} → { uid }
+  static CollectionReference<Map<String, dynamic>> get referralCodesCollection =>
+      instance.collection('referralCodes');
 }
 

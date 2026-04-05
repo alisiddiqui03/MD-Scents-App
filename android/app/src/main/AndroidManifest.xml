@@ -1,9 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Network: Firebase, APIs, Google Sign-In, AdMob -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13+ post notifications (OneSignal / FCM) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <!-- AdMob / ads: advertising ID (targetSdk 33+). Declare “Advertising ID” in Play Console → App content. -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
+    <!-- Notification vibration (merged from FCM/OneSignal on many setups; explicit is harmless). -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
         android:label="MD Scents"
@@ -61,5 +65,10 @@
         </intent>
         <!-- Google Play services -->
         <package android:name="com.google.android.gms"/>
+        <!-- share_plus / chooser: target apps visible on API 30+ -->
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="*/*"/>
+        </intent>
     </queries>
 </manifest>

@@ -1,4 +1,4 @@
-import 'package:flutter_application_1/app/routes/app_pages.dart';
+import 'package:md_scents_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 
 class UserBaseController extends GetxController {
@@ -16,4 +16,3 @@ class UserBaseController extends GetxController {
     currentIndex.value = index;
   }
 }
-
