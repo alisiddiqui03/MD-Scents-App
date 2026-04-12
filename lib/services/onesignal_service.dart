@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import '../core/constants/app_constants.dart';
@@ -36,21 +37,17 @@ class OneSignalService {
 
       final fs = FirebaseFirestore.instance;
       final userRef = fs.collection('users').doc(userId);
-      await userRef.set(
-        {'oneSignalPlayerId': playerId},
-        SetOptions(merge: true),
-      );
+      await userRef.set({
+        'oneSignalPlayerId': playerId,
+      }, SetOptions(merge: true));
 
       final snap = await userRef.get();
       final role = snap.data()?['role'] as String? ?? 'user';
       if (role == 'admin') {
-        await fs.collection(_adminTargetsCollection).doc(userId).set(
-          {
-            'oneSignalPlayerId': playerId,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        await fs.collection(_adminTargetsCollection).doc(userId).set({
+          'oneSignalPlayerId': playerId,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
     } catch (e, st) {
       debugPrint('savePlayerId error: $e\n$st');
@@ -74,10 +71,7 @@ class OneSignalService {
           playerId: pid,
           title: 'New Order Received!',
           body: 'A new order #$short has been placed',
-          data: {
-            'type': 'new_order',
-            'orderId': orderId,
-          },
+          data: {'type': 'new_order', 'orderId': orderId},
         );
       }
     } catch (e, st) {
@@ -117,6 +111,7 @@ class OneSignalService {
         case 'delivered':
           title = 'Order Delivered!';
           body = 'Your order #$orderId has been delivered';
+          _scheduleReviewReminder(playerId: playerId, orderId: orderId);
           break;
         case 'processing':
           title = 'Order Processing';
@@ -142,15 +137,29 @@ class OneSignalService {
         playerId: playerId,
         title: title,
         body: body,
-        data: {
-          'type': 'order_update',
-          'orderId': orderId,
-          'status': status,
-        },
+        data: {'type': 'order_update', 'orderId': orderId, 'status': status},
       );
     } catch (e, st) {
       debugPrint('notifyUser error: $e\n$st');
     }
+  }
+
+  static Future<void> _scheduleReviewReminder({
+    required String playerId,
+    required String orderId,
+  }) async {
+    final expiryTime = DateTime.now().add(const Duration(days: 6, hours: 23));
+    // OneSignal string format: "2015-09-24 14:00:00 GMT-0700"
+    // We can use simple UTC string "2023-11-20 14:00:00 UTC"
+    final sendAfterStr = '${expiryTime.toUtc().toString().split('.').first} UTC';
+
+    await _sendNotification(
+      playerId: playerId,
+      title: 'Review Reward Expiring Soon! ⏳',
+      body: 'You have only a few hours left to submit a picture review for order #$orderId and claim your 250 PKR wallet reward!',
+      data: {'type': 'review_reminder', 'orderId': orderId},
+      sendAfter: sendAfterStr,
+    );
   }
 
   static Future<void> _sendNotification({
@@ -158,22 +167,29 @@ class OneSignalService {
     required String title,
     required String body,
     required Map<String, String> data,
+    String? sendAfter,
   }) async {
     try {
+      final payload = <String, dynamic>{
+        'app_id': oneSignalAppId,
+        'include_player_ids': [playerId],
+        'headings': {'en': title},
+        'contents': {'en': body},
+        'data': data,
+      };
+
+      if (sendAfter != null) {
+        payload['send_after'] = sendAfter;
+      }
+
       final response = await http.post(
         Uri.parse('https://onesignal.com/api/v1/notifications'),
         headers: {
           'Content-Type': 'application/json',
           // OneSignal REST API keys (os_v2_…) use the Key scheme.
-          'Authorization': 'Key $oneSignalRestApiKey',
+          'Authorization': 'Key ${dotenv.env['ONESIGNAL_REST_API_KEY']}',
         },
-        body: jsonEncode({
-          'app_id': oneSignalAppId,
-          'include_player_ids': [playerId],
-          'headings': {'en': title},
-          'contents': {'en': body},
-          'data': data,
-        }),
+        body: jsonEncode(payload),
       );
       debugPrint('OneSignal response: ${response.statusCode} ${response.body}');
     } catch (e, st) {

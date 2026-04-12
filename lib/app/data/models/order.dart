@@ -104,6 +104,12 @@ class Order {
   final DateTime? cancelledAt;
   final bool cancellationUnreadForUser;
 
+  /// True when the user has successfully submitted a picture review for this order.
+  final bool reviewSubmitted;
+
+  /// The exact time the admin marked the order as delivered.
+  final DateTime? deliveredAt;
+
   const Order({
     required this.id,
     this.userId,
@@ -138,7 +144,15 @@ class Order {
     this.cancellationReason,
     this.cancelledAt,
     this.cancellationUnreadForUser = false,
+    this.reviewSubmitted = false,
+    this.deliveredAt,
   });
+
+  /// The exact time when the review window expires (7 days after delivery).
+  DateTime? get reviewPeriodEndDate {
+    if (deliveredAt == null) return null;
+    return deliveredAt!.add(const Duration(days: 7));
+  }
 
   String get deliverySummaryLine {
     final parts = <String>[
@@ -196,6 +210,8 @@ class Order {
       cancellationReason: cancellationReason,
       cancelledAt: cancelledAt,
       cancellationUnreadForUser: cancellationUnreadForUser,
+      reviewSubmitted: reviewSubmitted,
+      deliveredAt: deliveredAt,
     );
   }
 
@@ -263,6 +279,8 @@ class Order {
       cancelledAt: cancelledAt,
       cancellationUnreadForUser:
           data['cancellationUnreadForUser'] as bool? ?? false,
+      reviewSubmitted: data['reviewSubmitted'] as bool? ?? false,
+      deliveredAt: (data['deliveredAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -291,6 +309,7 @@ class Order {
       'referralRewardPending': referralRewardPending,
       'referralRewardGranted': referralRewardGranted,
       'referralFreeDelivery': referralFreeDelivery,
+      'reviewSubmitted': reviewSubmitted,
     };
     if (userId != null) map['userId'] = userId;
     if (referralCodeEntered != null) {
@@ -304,6 +323,9 @@ class Order {
     }
     if (cancelledAt != null) {
       map['cancelledAt'] = Timestamp.fromDate(cancelledAt!);
+    }
+    if (deliveredAt != null) {
+      map['deliveredAt'] = Timestamp.fromDate(deliveredAt!);
     }
     return map;
   }

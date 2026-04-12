@@ -40,11 +40,19 @@ class FirestoreService {
   static Query<Map<String, dynamic>> get ordersCollectionGroup =>
       instance.collectionGroup('orders');
 
+  /// All reviews across users (for admin)
+  static Query<Map<String, dynamic>> get reviewsCollectionGroup =>
+      instance.collectionGroup('reviews');
+
   static CollectionReference<Map<String, dynamic>> get discountsCollection =>
       instance.collection('discounts');
 
   /// Global map: referralCodes/{code} → { uid }
   static CollectionReference<Map<String, dynamic>> get referralCodesCollection =>
       instance.collection('referralCodes');
+
+  /// Perfume brand directory: brands/{brandId} → { name, createdAt }
+  static CollectionReference<Map<String, dynamic>> get brandsCollection =>
+      instance.collection('brands');
 }
 

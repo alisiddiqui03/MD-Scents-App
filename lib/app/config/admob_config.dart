@@ -20,9 +20,9 @@ class AdmobConfig {
   // ── Production ad unit IDs (with /) ─────────────────────────────────────────
   /// **Rewarded** — "Watch ad to boost discount" on Offers & Discounts.
   static const String androidRewardedUnitId =
-      'ca-app-pub-3940256099942544/5224354917';
+      'ca-app-pub-3221693773631079/6137635769';
   static const String iosRewardedUnitId =
-      'ca-app-pub-3940256099942544/5224354917';
+      'ca-app-pub-3221693773631079/6137635769';
 
   /// **Banner** — bottom of discount / offers screen.
   static const String androidBannerUnitId =
@@ -43,8 +43,7 @@ class AdmobConfig {
       'ca-app-pub-3940256099942544/1712485313';
   static const String androidTestBanner =
       'ca-app-pub-3940256099942544/6300978111';
-  static const String iosTestBanner =
-      'ca-app-pub-3940256099942544/2934735716';
+  static const String iosTestBanner = 'ca-app-pub-3940256099942544/2934735716';
   static const String androidTestInterstitial =
       'ca-app-pub-3940256099942544/1033173712';
   static const String iosTestInterstitial =

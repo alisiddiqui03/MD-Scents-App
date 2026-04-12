@@ -66,7 +66,7 @@ class AdService {
   // ── Test vs production units ───────────────────────────────────────────────
 
   /// Real units in profile/release; test units in debug when forced.
-  bool _useTestAdUnits() => true;
+  bool _useTestAdUnits() => kDebugMode && AdmobConfig.forceTestAdsInDebug;
 
   // ── Logging ─────────────────────────────────────────────────────────────────
 
@@ -74,12 +74,7 @@ class AdService {
     if (kDebugMode) {
       debugPrint('[AdService] $message${error != null ? ' :: $error' : ''}');
     }
-    developer.log(
-      message,
-      name: 'AdService',
-      error: error,
-      stackTrace: stack,
-    );
+    developer.log(message, name: 'AdService', error: error, stackTrace: stack);
   }
 
   // ── Network (no platform plugin — avoids MissingPluginException) ────────────
@@ -102,9 +97,7 @@ class AdService {
     try {
       await MobileAds.instance.initialize();
       _sdkInitialized = true;
-      _log(
-        'MobileAds.initialize OK (testUnits=${_useTestAdIdsLabel()})',
-      );
+      _log('MobileAds.initialize OK (testUnits=${_useTestAdIdsLabel()})');
       loadRewardedAd();
       loadInterstitialAd();
     } catch (e, st) {
@@ -140,7 +133,6 @@ class AdService {
           _rewardedReadySince = DateTime.now();
           _rewardedRetryTimer?.cancel();
           _log('Rewarded LOAD success');
-          debugPrint('TEST AD LOADED SUCCESSFULLY');
         },
         onAdFailedToLoad: (LoadAdError error) {
           _rewardedAd = null;

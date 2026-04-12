@@ -34,6 +34,10 @@ import '../../modules/user/all_products/bindings/all_products_binding.dart';
 import '../../modules/user/all_products/views/all_products_view.dart';
 import '../../modules/user/featured_products/bindings/featured_products_binding.dart';
 import '../../modules/user/featured_products/views/featured_products_view.dart';
+import '../../modules/user/write_review/bindings/write_review_binding.dart';
+import '../../modules/user/write_review/views/write_review_view.dart';
+import '../../modules/user/my_reviews/bindings/my_reviews_binding.dart';
+import '../../modules/user/my_reviews/views/my_reviews_view.dart';
 
 import '../../modules/admin/admin_base/bindings/admin_base_binding.dart';
 import '../../modules/admin/admin_base/views/admin_base_layout.dart';
@@ -53,6 +57,8 @@ import '../../modules/admin/settings/bindings/admin_settings_binding.dart';
 import '../../modules/admin/settings/views/admin_settings_view.dart';
 import '../../modules/admin/ads_discount/bindings/admin_ads_discount_binding.dart';
 import '../../modules/admin/ads_discount/views/admin_ads_discount_view.dart';
+import '../../modules/admin/all_reviews/bindings/admin_reviews_binding.dart';
+import '../../modules/admin/all_reviews/views/admin_reviews_view.dart';
 
 part 'app_routes.dart';
 
@@ -152,6 +158,16 @@ class AppPages {
       page: () => const WalletView(),
       binding: WalletBinding(),
     ),
+    GetPage(
+      name: _Paths.USER_WRITE_REVIEW,
+      page: () => const WriteReviewView(),
+      binding: WriteReviewBinding(),
+    ),
+    GetPage(
+      name: _Paths.USER_MY_REVIEWS,
+      page: () => const MyReviewsView(),
+      binding: MyReviewsBinding(),
+    ),
 
     // Admin base + tabs
     GetPage(
@@ -198,6 +214,11 @@ class AppPages {
       name: _Paths.ADMIN_ADS_DISCOUNT,
       page: () => const AdminAdsDiscountView(),
       binding: AdminAdsDiscountBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_ALL_REVIEWS,
+      page: () => const AdminReviewsView(),
+      binding: AdminReviewsBinding(),
     ),
   ];
 }

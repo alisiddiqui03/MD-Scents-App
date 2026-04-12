@@ -7,6 +7,7 @@ import '../../services/onesignal_service.dart';
 import '../config/google_auth_config.dart';
 import '../data/models/app_user.dart';
 import '../exceptions/google_account_link_exception.dart';
+import 'firestore_service.dart';
 
 class AuthService extends GetxService {
   AuthService();
@@ -171,6 +172,138 @@ class AuthService extends GetxService {
     await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
+  Future<void> deleteCurrentUser({String? password}) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No user is currently signed in.',
+      );
+    }
+
+    final providerIds = user.providerData.map((p) => p.providerId).toSet();
+
+    if (providerIds.contains('password')) {
+      final email = user.email?.trim();
+      if (email == null || email.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'invalid-email',
+          message:
+              'Unable to determine your email address for reauthentication.',
+        );
+      }
+      if (password == null || password.trim().isEmpty) {
+        throw FirebaseAuthException(
+          code: 'requires-recent-login',
+          message: 'Password is required to delete your account.',
+        );
+      }
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password.trim(),
+      );
+      await user.reauthenticateWithCredential(credential);
+    } else if (providerIds.contains('google.com')) {
+      final googleUser = await _googleSignInClient.signIn();
+      if (googleUser == null) {
+        throw FirebaseAuthException(
+          code: 'google-sign-in-aborted',
+          message: 'Google sign-in was cancelled. Please try again.',
+        );
+      }
+
+      final googleAuth = await googleUser.authentication;
+      if (googleAuth.idToken == null || googleAuth.idToken!.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'invalid-credential',
+          message: 'Unable to authenticate with Google.',
+        );
+      }
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      await user.reauthenticateWithCredential(credential);
+    } else {
+      throw FirebaseAuthException(
+        code: 'unsupported-provider',
+        message:
+            'Your sign-in method does not support direct account deletion. Please sign in again and try again.',
+      );
+    }
+
+    final uid = user.uid;
+    final currentAppUser = currentUser.value;
+    await _deleteUserDataFromFirestore(uid, currentAppUser?.referralCode);
+
+    try {
+      await OneSignalService.signOutCleanup();
+    } catch (_) {}
+
+    await user.delete();
+    currentUser.value = null;
+    firebaseUser.value = null;
+  }
+
+  Future<void> _deleteUserDataFromFirestore(
+    String uid,
+    String? referralCode,
+  ) async {
+    if (referralCode != null && referralCode.trim().isNotEmpty) {
+      await FirestoreService.referralCodesCollection
+          .doc(referralCode.trim())
+          .delete()
+          .catchError((_) {});
+    }
+
+    await _deleteUserCollection(FirestoreService.usersOrdersRef(uid));
+    await _deleteUserCollection(FirestoreService.usersWishlistRef(uid));
+    await _deleteUserCollection(FirestoreService.usersAddressesRef(uid));
+    await _deleteUserCollection(
+      FirestoreService.usersCollection.doc(uid).collection('referrals'),
+    );
+    await _deleteUserReviews(uid);
+
+    await FirestoreService.usersCollection.doc(uid).delete().catchError((_) {});
+  }
+
+  Future<void> _deleteUserCollection(
+    CollectionReference<Map<String, dynamic>> collection,
+  ) async {
+    while (true) {
+      final snapshot = await collection.limit(300).get();
+      if (snapshot.docs.isEmpty) {
+        return;
+      }
+
+      final batch = FirestoreService.instance.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
+  Future<void> _deleteUserReviews(String uid) async {
+    while (true) {
+      final snapshot = await FirestoreService.usersReviewsRef(
+        uid,
+      ).limit(300).get();
+      if (snapshot.docs.isEmpty) {
+        return;
+      }
+
+      final batch = FirestoreService.instance.batch();
+      for (final doc in snapshot.docs) {
+        final productId = doc.id;
+        batch.delete(doc.reference);
+        batch.delete(FirestoreService.productReviewsRef(productId).doc(uid));
+      }
+      await batch.commit();
+    }
+  }
+
   Future<UserCredential> signInWithGoogle() async {
     if (kGoogleOAuthWebClientId.trim().isEmpty) {
       throw FirebaseAuthException(
@@ -189,8 +322,7 @@ class AuthService extends GetxService {
       await _googleSignInClient.disconnect();
     } catch (_) {}
 
-    final GoogleSignInAccount? googleUser =
-        await _googleSignInClient.signIn();
+    final GoogleSignInAccount? googleUser = await _googleSignInClient.signIn();
 
     if (googleUser == null) {
       throw FirebaseAuthException(

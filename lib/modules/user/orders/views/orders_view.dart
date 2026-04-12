@@ -67,84 +67,87 @@ class OrdersView extends GetView<UserOrdersController> {
           }),
         ],
       ),
-      body: Obx(() {
-        Future<void> onRefresh() => controller.refreshOrders();
+      body: SafeArea(
+        bottom: true,
+        child: Obx(() {
+          Future<void> onRefresh() => controller.refreshOrders();
 
-        if (controller.isLoading.value) {
-          return RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: onRefresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+          if (controller.isLoading.value) {
+            return RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: onRefresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.45,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (!controller.hasOrders) {
+            return RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: onRefresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.65,
+                    child: _buildEmpty(all: true),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final display = controller.displayOrders;
+          if (display.isEmpty) {
+            return Column(
               children: [
-                SizedBox(
-                  height: MediaQuery.sizeOf(context).height * 0.45,
-                  child: const Center(child: CircularProgressIndicator()),
+                _buildStatusChips(),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: onRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.sizeOf(context).height * 0.45,
+                          child: _buildEmpty(all: false),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
-            ),
-          );
-        }
-        if (!controller.hasOrders) {
-          return RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: onRefresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(
-                  height: MediaQuery.sizeOf(context).height * 0.65,
-                  child: _buildEmpty(all: true),
-                ),
-              ],
-            ),
-          );
-        }
+            );
+          }
 
-        final display = controller.displayOrders;
-        if (display.isEmpty) {
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildStatusChips(),
               Expanded(
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: onRefresh,
-                  child: ListView(
+                  child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.sizeOf(context).height * 0.45,
-                        child: _buildEmpty(all: false),
-                      ),
-                    ],
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: display.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _OrderCard(order: display[i]),
                   ),
                 ),
               ),
             ],
           );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildStatusChips(),
-            Expanded(
-              child: RefreshIndicator(
-                color: AppColors.primary,
-                onRefresh: onRefresh,
-                child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  itemCount: display.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _OrderCard(order: display[i]),
-                ),
-              ),
-            ),
-          ],
-        );
-      }),
+        }),
+      ),
     );
   }
 
@@ -776,6 +779,124 @@ class _OrderCard extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                // ── Review Action ─────────────────────────────────────────────
+                if (order.status == OrderStatus.delivered && !order.reviewSubmitted) ...[
+                  Builder(
+                    builder: (context) {
+                      final expiryDate = order.reviewPeriodEndDate ?? order.createdAt.add(const Duration(days: 7));
+                      final isExpired = DateTime.now().isAfter(expiryDate);
+                      final amPm = expiryDate.hour >= 12 ? 'PM' : 'AM';
+                      final h = expiryDate.hour % 12 == 0 ? 12 : expiryDate.hour % 12;
+                      final min = expiryDate.minute.toString().padLeft(2, '0');
+                      final expiryStr = '${expiryDate.day}/${expiryDate.month}/${expiryDate.year} at $h:$min $amPm';
+
+                      if (isExpired) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 14),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.timer_off_outlined, color: Colors.grey.shade600, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Review period expired on $expiryStr',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () => Get.toNamed('/user/write-review', arguments: order),
+                                icon: const Icon(Icons.star_rounded, size: 20),
+                                label: const Text('Write Review & Earn 250 PKR'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  backgroundColor: AppColors.primary.withValues(alpha: 0.05),
+                                  side: const BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  textStyle: AppTextStyles.bodyMedium.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.info_outline, size: 14, color: AppColors.danger),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    'Limited offer ends on $expiryStr',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: AppColors.danger,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+                if (order.status == OrderStatus.delivered && order.reviewSubmitted) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Review submitted (Earned 250 PKR)',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
               ],
             ),
           ),

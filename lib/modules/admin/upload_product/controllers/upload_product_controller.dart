@@ -5,28 +5,55 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/config/cloudinary_config.dart';
+import '../../../../app/data/models/brand.dart';
 import '../../../../app/data/models/product.dart';
+import '../../../../app/services/brand_service.dart';
 import '../../../../app/services/cloudinary_service.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/utils/admin_snackbar.dart';
 
+/// Fixed size options (ml) available for selection.
+const List<int> kSizeOptions = [30, 50, 100, 200];
+
 class UploadProductController extends GetxController {
+  // ── Text controllers ────────────────────────────────────────────────────────
+  /// Perfume name only (e.g. "Aventus"). Brand is selected separately.
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
   final priceController = TextEditingController();
   final stockController = TextEditingController();
   final discountController = TextEditingController();
+
+  // ── Toggles ─────────────────────────────────────────────────────────────────
   final isFeatured = false.obs;
   final isActive = true.obs;
 
+  // ── Size (ml) ────────────────────────────────────────────────────────────────
+  /// Selected ml from [kSizeOptions]. Required before saving.
+  final selectedSize = Rxn<int>();
+
+  // ── Brand ───────────────────────────────────────────────────────────────────
+  /// Selected brand name (String) or null when none.
+  final selectedBrand = Rxn<String>();
+
+  /// When true, show the inline "Add new brand" input row.
+  final isAddingNewBrand = false.obs;
+
+  /// Input for the new brand name when [isAddingNewBrand] is true.
+  final newBrandController = TextEditingController();
+
+  /// Prevents double-tap while saving a new brand to Firestore.
+  final isSavingBrand = false.obs;
+
+  // ── Loading / saving ────────────────────────────────────────────────────────
   final isSaving = false.obs;
   final isUploadingImage = false.obs;
 
   /// Uploaded image URLs (order = gallery order).
   final imageUrls = <String>[].obs;
 
+  // ── Internals ────────────────────────────────────────────────────────────────
   final ImagePicker _picker = ImagePicker();
-
   final ProductService _productService = ProductService.to;
   final CloudinaryService _cloudinary = CloudinaryService();
 
@@ -34,6 +61,8 @@ class UploadProductController extends GetxController {
 
   bool get isEditing => _editingId != null;
   bool get cloudinaryConfigured => CloudinaryConfig.isConfigured;
+
+  // ── Lifecycle ────────────────────────────────────────────────────────────────
 
   @override
   void onInit() {
@@ -44,16 +73,34 @@ class UploadProductController extends GetxController {
       final existing = _productService.findById(id);
       if (existing != null) {
         _editingId = existing.id;
-        nameController.text = existing.name;
+
+        // ── Name: strip brand prefix so input shows perfume name only ─────────
+        final brand = existing.brandName;
+        if (brand != null && brand.isNotEmpty) {
+          selectedBrand.value = brand;
+          final prefix = '$brand ';
+          nameController.text = existing.name.startsWith(prefix)
+              ? existing.name.substring(prefix.length)
+              : existing.name;
+        } else {
+          nameController.text = existing.name;
+        }
+
         priceController.text = existing.price.toStringAsFixed(0);
         stockController.text = existing.stock.toString();
-        discountController.text = existing.discountPercent.toStringAsFixed(0);
+        discountController.text = existing.discountPercent > 0
+            ? existing.discountPercent.toStringAsFixed(0)
+            : '';
+        descriptionController.text = existing.description ?? '';
+
         imageUrls.assignAll(existing.imageUrls);
         if (imageUrls.isEmpty && existing.imageUrl.isNotEmpty) {
           imageUrls.add(existing.imageUrl);
         }
+
         isFeatured.value = existing.isFeatured;
         isActive.value = existing.isActive;
+        selectedSize.value = existing.size;
       }
     }
   }
@@ -65,8 +112,49 @@ class UploadProductController extends GetxController {
     priceController.dispose();
     stockController.dispose();
     discountController.dispose();
+    newBrandController.dispose();
     super.onClose();
   }
+
+  // ── Brand helpers ────────────────────────────────────────────────────────────
+
+  void startAddingNewBrand() {
+    newBrandController.clear();
+    isAddingNewBrand.value = true;
+  }
+
+  void cancelAddingBrand() {
+    isAddingNewBrand.value = false;
+    newBrandController.clear();
+  }
+
+  Future<void> saveNewBrand() async {
+    final name = newBrandController.text.trim();
+    if (name.isEmpty) {
+      AdminSnackbar.error('Brand name required', 'Enter a brand name first.');
+      return;
+    }
+    if (isSavingBrand.value) return;
+    isSavingBrand.value = true;
+    try {
+      final brand = await BrandService.to.addBrand(name);
+      if (brand != null) {
+        selectedBrand.value = brand.name;
+        isAddingNewBrand.value = false;
+        newBrandController.clear();
+        AdminSnackbar.success('Brand saved', '"${brand.name}" is now available.');
+      }
+    } catch (e) {
+      AdminSnackbar.error(
+        'Could not save brand',
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      isSavingBrand.value = false;
+    }
+  }
+
+  // ── Image helpers ────────────────────────────────────────────────────────────
 
   /// Pick one or more images from gallery, upload each to Cloudinary.
   Future<void> pickAndUploadImages() async {
@@ -106,7 +194,9 @@ class UploadProductController extends GetxController {
     } catch (e) {
       AdminSnackbar.error(
         'Upload failed',
-        e.toString().replaceFirst('StateError: ', '').replaceFirst('Exception: ', ''),
+        e.toString()
+            .replaceFirst('StateError: ', '')
+            .replaceFirst('Exception: ', ''),
       );
     } finally {
       isUploadingImage.value = false;
@@ -119,27 +209,39 @@ class UploadProductController extends GetxController {
     }
   }
 
-  void clearAllImages() {
-    imageUrls.clear();
-  }
+  void clearAllImages() => imageUrls.clear();
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
 
   Future<void> saveProduct() async {
-    final name = nameController.text.trim();
+    final perfumeName = nameController.text.trim();
     final priceText = priceController.text.trim();
     final stockText = stockController.text.trim();
     final discountText = discountController.text.trim();
 
-    if (name.isEmpty || priceText.isEmpty || stockText.isEmpty) {
+    // ── Validation ────────────────────────────────────────────────────────────
+    if (perfumeName.isEmpty || priceText.isEmpty || stockText.isEmpty) {
       AdminSnackbar.error(
         'Missing information',
-        'Name, price and stock are required.',
+        'Perfume name, price and stock are required.',
+      );
+      return;
+    }
+
+    if (selectedSize.value == null) {
+      AdminSnackbar.error(
+        'Size required',
+        'Please select a perfume size (ml).',
       );
       return;
     }
 
     final price = double.tryParse(priceText);
     final stock = int.tryParse(stockText);
-    final discount = double.tryParse(discountText.isEmpty ? '0' : discountText);
+    // Treat empty discount as 0
+    final discount =
+        double.tryParse(discountText.isEmpty ? '0' : discountText);
+
     if (price == null || stock == null || discount == null) {
       AdminSnackbar.error(
         'Invalid values',
@@ -149,6 +251,13 @@ class UploadProductController extends GetxController {
     }
     final safeDiscount = discount.clamp(0, 90).toDouble();
 
+    // ── Build display name ─────────────────────────────────────────────────────
+    // "Creed" + "Aventus" → "Creed Aventus"; no brand → just "Aventus"
+    final brand = selectedBrand.value?.trim();
+    final displayName = (brand != null && brand.isNotEmpty)
+        ? '$brand $perfumeName'
+        : perfumeName;
+
     isSaving.value = true;
     try {
       final id = _editingId ??
@@ -156,14 +265,12 @@ class UploadProductController extends GetxController {
 
       final urls = imageUrls.isNotEmpty
           ? List<String>.from(imageUrls)
-          : <String>[
-              'https://picsum.photos/seed/$id/400/400',
-            ];
+          : <String>['https://picsum.photos/seed/$id/400/400'];
 
       final desc = descriptionController.text.trim();
       final product = ProductItem(
         id: id,
-        name: name,
+        name: displayName,
         price: price,
         imageUrls: urls,
         stock: stock,
@@ -171,15 +278,17 @@ class UploadProductController extends GetxController {
         discountPercent: safeDiscount,
         isFeatured: isFeatured.value,
         description: desc.isEmpty ? null : desc,
+        size: selectedSize.value,
+        brandName: (brand != null && brand.isNotEmpty) ? brand : null,
       );
 
       await _productService.upsertProduct(product);
 
-      Get.back(); // close form
+      Get.back();
 
       AdminSnackbar.success(
         isEditing ? 'Product updated' : 'Product created',
-        '$name has been saved.',
+        '$displayName has been saved.',
       );
     } catch (e) {
       AdminSnackbar.error(

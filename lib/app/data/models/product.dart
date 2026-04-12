@@ -18,6 +18,12 @@ class ProductItem {
   /// Optional long text from Firestore (admin).
   final String? description;
 
+  /// Perfume volume in ml (30 | 50 | 100 | 200). Nullable for old products.
+  final int? size;
+
+  /// Brand name (e.g. "Creed"). Nullable for old products without a brand.
+  final String? brandName;
+
   /// Set by Firestore on create/update (admin inventory).
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -39,6 +45,8 @@ class ProductItem {
     this.category,
     this.discountPercent = 0,
     this.description,
+    this.size,
+    this.brandName,
     this.createdAt,
     this.updatedAt,
   });
@@ -81,6 +89,11 @@ class ProductItem {
         final t = d.trim();
         return t.isEmpty ? null : t;
       }(),
+      size: (data['size'] as num?)?.toInt(),
+      brandName: () {
+        final b = data['brandName'] as String?;
+        return (b == null || b.trim().isEmpty) ? null : b.trim();
+      }(),
       createdAt: _tsToDate(data['createdAt']),
       updatedAt: _tsToDate(data['updatedAt']),
     );
@@ -92,7 +105,7 @@ class ProductItem {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'name': name,
       'price': price,
       'oldPrice': oldPrice,
@@ -108,6 +121,9 @@ class ProductItem {
       'discountPercent': discountPercent,
       'description': description ?? '',
     };
+    if (size != null) map['size'] = size;
+    if (brandName != null && brandName!.isNotEmpty) map['brandName'] = brandName;
+    return map;
   }
 }
 

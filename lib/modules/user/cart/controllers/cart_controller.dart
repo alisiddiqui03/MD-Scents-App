@@ -62,7 +62,24 @@ class CartController extends GetxController {
   /// 0 = unknown (loading), otherwise count of past orders for referral UI.
   final completedOrderCount = (-1).obs;
   final applyWalletBalance = false.obs;
+  final applyBirthdayDiscount = false.obs;
   final referralCodeController = TextEditingController();
+
+  bool get isBirthdayMonth {
+    final user = AuthService.to.currentUser.value;
+    if (user == null || user.birthday == null) return false;
+    final now = DateTime.now();
+    return user.birthday!.month == now.month;
+  }
+
+  bool get canUseBirthdayDiscount {
+    if (!isBirthdayMonth) return false;
+    final user = AuthService.to.currentUser.value;
+    if (user == null) return false;
+    final now = DateTime.now();
+    // User can use it once per year
+    return user.birthdayDiscountUsedYear != now.year;
+  }
 
   /// True when current checkout has a validated referral (free delivery messaging).
   final referralFreeDeliveryThisCheckout = false.obs;
@@ -309,8 +326,13 @@ class CartController extends GetxController {
   double get subtotal =>
       items.fold(0, (sum, item) => sum + item.unitPrice * item.qty.value);
 
-  double get userDiscountPercent =>
-      _discountService.currentDiscountPercent.value.clamp(0, 20).toDouble();
+  double get userDiscountPercent {
+    double d = _discountService.currentDiscountPercent.value;
+    if (applyBirthdayDiscount.value && canUseBirthdayDiscount) {
+      d += 10;
+    }
+    return d.clamp(0, 30).toDouble();
+  }
 
   double get userDiscountAmount => subtotal * (userDiscountPercent / 100);
 
@@ -747,6 +769,10 @@ class CartController extends GetxController {
         final userRef = FirestoreService.usersCollection.doc(user.uid);
         final userMerge = <String, dynamic>{};
 
+        if (applyBirthdayDiscount.value && canUseBirthdayDiscount) {
+          userMerge['birthdayDiscountUsedYear'] = DateTime.now().year;
+        }
+
         if (walletApplied > 0.009) {
           final uSnap = await txn.get(userRef);
           final w = uSnap.data()?['wallet'];
@@ -757,7 +783,7 @@ class CartController extends GetxController {
             pend = (w['pendingRewards'] as num?)?.toDouble() ?? 0;
           }
           if (bal + 1e-6 < walletApplied) {
-            throw StateError('Insufficient store credit.');
+            throw 'Insufficient store credit.';
           }
           userMerge['wallet'] = {
             'balance': bal - walletApplied,

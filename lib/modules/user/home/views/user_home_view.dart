@@ -9,6 +9,7 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/data/models/product.dart';
 import '../../../../app/services/product_service.dart';
+import '../../../../app/services/brand_service.dart';
 import '../../../../app/widgets/discount_badge.dart';
 
 class UserHomeView extends StatelessWidget {
@@ -31,6 +32,8 @@ class UserHomeView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeroBanner(ctrl),
+              const SizedBox(height: 20),
+              _buildBrandsSection(),
               const SizedBox(height: 20),
               _buildSectionHeader(
                 'Latest Collection',
@@ -398,7 +401,73 @@ class UserHomeView extends StatelessWidget {
       ),
     );
   }
-}
+
+  // ── Brands horizontal scroll ────────────────────────────────────────────────
+
+  Widget _buildBrandsSection() {
+    return Obx(() {
+      final brands = BrandService.to.brands;
+      if (brands.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            'Shop by Brand',
+            onViewAll: () => Get.toNamed(Routes.USER_ALL_PRODUCTS),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 48,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: brands.length,
+              itemBuilder: (_, i) {
+                final brand = brands[i];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: GestureDetector(
+                    onTap: () => Get.toNamed(
+                      Routes.USER_ALL_PRODUCTS,
+                      arguments: {'brand': brand.name},
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        brand.name,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    });
+  }
+} // end UserHomeView
 
 // ── Banner card ───────────────────────────────────────────────────────────────
 

@@ -36,7 +36,11 @@ class AllProductsView extends GetView<AllProductsController> {
           IconButton(
             onPressed: () => _showFilterSheet(context),
             icon: Obx(() {
-              final active = controller.priceFilterActive.value;
+              // Dot lights up when ANY filter is active (price, size, or brand
+              // brand is already shown as a row chip, but price/size come only
+              // from the sheet, so the dot covers price + size).
+              final active = controller.priceFilterActive.value ||
+                  controller.selectedSize.value != null;
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -62,7 +66,11 @@ class AllProductsView extends GetView<AllProductsController> {
       ),
       body: Column(
         children: [
+          // ── Brand filter row ─────────────────────────────────────────────
+          _buildBrandFilter(),
+          // ── Category filter row ──────────────────────────────────────────
           _buildCategoryFilter(),
+          // ── Product grid ─────────────────────────────────────────────────
           Expanded(
             child: Obx(() {
               final products = controller.filteredProducts;
@@ -71,8 +79,9 @@ class AllProductsView extends GetView<AllProductsController> {
 
               Widget scrollChild;
               if (products.isEmpty) {
-                final hasFilters =
-                    controller.priceFilterActive.value ||
+                final hasFilters = controller.priceFilterActive.value ||
+                    controller.selectedSize.value != null ||
+                    controller.selectedBrand.value != null ||
                     (controller.selectedCategory.value != null &&
                         controller.selectedCategory.value!.isNotEmpty);
                 scrollChild = ListView(
@@ -89,7 +98,8 @@ class AllProductsView extends GetView<AllProductsController> {
                                 : 'No products yet.',
                             textAlign: TextAlign.center,
                             style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.textDark.withValues(alpha: 0.55),
+                              color:
+                                  AppColors.textDark.withValues(alpha: 0.55),
                             ),
                           ),
                         ),
@@ -101,19 +111,22 @@ class AllProductsView extends GetView<AllProductsController> {
                 scrollChild = GridView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     childAspectRatio: 0.72,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
                   itemCount: products.length,
-                  itemBuilder: (_, i) => _ProductCard(product: products[i]),
+                  itemBuilder: (_, i) =>
+                      _ProductCard(product: products[i]),
                 );
               }
               return RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: () => ProductService.to.refreshCatalogFromServer(),
+                onRefresh: () =>
+                    ProductService.to.refreshCatalogFromServer(),
                 child: scrollChild,
               );
             }),
@@ -123,8 +136,137 @@ class AllProductsView extends GetView<AllProductsController> {
     );
   }
 
-  static const _sheetText = TextStyle(color: Color(0xFF212121), fontSize: 16);
-  static const _sheetSub = TextStyle(color: Color(0xFF616161), fontSize: 12);
+  // ── Brand filter row ──────────────────────────────────────────────────────────
+
+  Widget _buildBrandFilter() {
+    return Obx(() {
+      final brands = controller.availableBrands;
+      if (brands.isEmpty) return const SizedBox.shrink();
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 6),
+              child: Text(
+                'Brand',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark.withValues(alpha: 0.5),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _filterChip(
+                    label: 'All',
+                    selected: controller.selectedBrand.value == null,
+                    onTap: () => controller.selectBrand(null),
+                    color: AppColors.primary,
+                  ),
+                  ...brands.map(
+                    (brand) => _filterChip(
+                      label: brand,
+                      selected: controller.selectedBrand.value == brand,
+                      onTap: () => controller.selectBrand(brand),
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      );
+    });
+  }
+
+  // ── Category filter row ───────────────────────────────────────────────────────
+
+  Widget _buildCategoryFilter() {
+    return Obx(() {
+      final labels = controller.categoryLabels;
+      if (labels.isEmpty) return const SizedBox.shrink();
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: SizedBox(
+          height: 38,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _filterChip(
+                label: 'All',
+                selected: controller.selectedCategory.value == null,
+                onTap: () => controller.selectCategory(null),
+                color: AppColors.secondary,
+              ),
+              ...labels.map(
+                (cat) => _filterChip(
+                  label: cat,
+                  selected: controller.selectedCategory.value == cat,
+                  onTap: () => controller.selectCategory(cat),
+                  color: AppColors.secondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _filterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    Color color = AppColors.primary,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? color : Colors.grey.shade300,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: selected ? Colors.white : AppColors.textDark,
+              fontSize: 12,
+              fontWeight:
+                  selected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Filter + Sort bottom sheet ────────────────────────────────────────────────
+
+  static const _sheetText =
+      TextStyle(color: Color(0xFF212121), fontSize: 16);
+  static const _sheetSub =
+      TextStyle(color: Color(0xFF616161), fontSize: 12);
 
   void _showFilterSheet(BuildContext context) {
     controller.syncAppliedRangeToCatalogIfNeeded();
@@ -136,13 +278,13 @@ class AllProductsView extends GetView<AllProductsController> {
       range.start.clamp(bounds.start, bounds.end),
       range.end.clamp(bounds.start, bounds.end),
     );
-    if (range.start >= range.end) {
-      range = bounds;
-    }
+    if (range.start >= range.end) range = bounds;
+
     AllProductsSort localSort = controller.sort.value;
+    int? localSize = controller.selectedSize.value;
 
     final mq = MediaQuery.of(context);
-    final maxH = mq.size.height * 0.72;
+    final maxH = mq.size.height * 0.82;
 
     showModalBottomSheet<void>(
       context: context,
@@ -157,7 +299,8 @@ class AllProductsView extends GetView<AllProductsController> {
         return AnimatedPadding(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(ctx).bottom),
           child: SafeArea(
             top: false,
             minimum: const EdgeInsets.only(bottom: 12),
@@ -174,11 +317,14 @@ class AllProductsView extends GetView<AllProductsController> {
               child: StatefulBuilder(
                 builder: (context, setModalState) {
                   return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                    padding:
+                        const EdgeInsets.fromLTRB(20, 8, 20, 16),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.stretch,
                       children: [
+                        // ── Drag handle ──────────────────────────────
                         Center(
                           child: Container(
                             width: 40,
@@ -197,26 +343,27 @@ class AllProductsView extends GetView<AllProductsController> {
                             color: const Color(0xFF212121),
                           ),
                         ),
-                        const SizedBox(height: 8),
+
+                        // ── Price range ──────────────────────────────
+                        const SizedBox(height: 12),
                         Text(
                           'Price (PKR) — effective price after discounts (0 – 1,00,000)',
                           style: _sheetSub,
                         ),
                         const SizedBox(height: 8),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               'PKR ${range.start.round()}',
                               style: _sheetText.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                                  fontWeight: FontWeight.w700),
                             ),
                             Text(
                               'PKR ${range.end.round()}',
                               style: _sheetText.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                                  fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
@@ -241,7 +388,8 @@ class AllProductsView extends GetView<AllProductsController> {
                             onPressed: () {
                               controller.clearPriceFilter();
                               setModalState(() {
-                                range = AllProductsController.kPriceBounds;
+                                range = AllProductsController
+                                    .kPriceBounds;
                               });
                             },
                             style: TextButton.styleFrom(
@@ -250,7 +398,116 @@ class AllProductsView extends GetView<AllProductsController> {
                             child: const Text('Reset price range'),
                           ),
                         ),
+
                         const Divider(height: 20),
+
+                        // ── Size (ml) filter ─────────────────────────
+                        Text(
+                          'Size',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF212121),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Obx(() {
+                          final sizes = controller.availableSizes;
+                          if (sizes.isEmpty) {
+                            return Text(
+                              'No size data on current products.',
+                              style: _sheetSub,
+                            );
+                          }
+                          return Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              // "All" chip
+                              GestureDetector(
+                                onTap: () => setModalState(
+                                    () => localSize = null),
+                                child: AnimatedContainer(
+                                  duration: const Duration(
+                                      milliseconds: 160),
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: localSize == null
+                                        ? AppColors.primary
+                                        : Colors.white,
+                                    borderRadius:
+                                        BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: localSize == null
+                                          ? AppColors.primary
+                                          : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'All',
+                                    style: TextStyle(
+                                      color: localSize == null
+                                          ? Colors.white
+                                          : const Color(0xFF212121),
+                                      fontSize: 13,
+                                      fontWeight: localSize == null
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              ...sizes.map((ml) {
+                                final selected = localSize == ml;
+                                return GestureDetector(
+                                  onTap: () => setModalState(
+                                      () => localSize = ml),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(
+                                        milliseconds: 160),
+                                    padding:
+                                        const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: selected
+                                          ? AppColors.primary
+                                          : Colors.white,
+                                      borderRadius:
+                                          BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: selected
+                                            ? AppColors.primary
+                                            : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '${ml}ml',
+                                      style: TextStyle(
+                                        color: selected
+                                            ? Colors.white
+                                            : const Color(
+                                                0xFF212121),
+                                        fontSize: 13,
+                                        fontWeight: selected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
+                          );
+                        }),
+
+                        const Divider(height: 24),
+
+                        // ── Sort ─────────────────────────────────────
                         Text(
                           'Sort by',
                           style: AppTextStyles.bodyMedium.copyWith(
@@ -260,68 +517,84 @@ class AllProductsView extends GetView<AllProductsController> {
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            border: Border.all(color: Colors.grey.shade400),
+                            border: Border.all(
+                                color: Colors.grey.shade400),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: DropdownButtonHideUnderline(
-                            child: DropdownButton<AllProductsSort>(
+                            child:
+                                DropdownButton<AllProductsSort>(
                               value: localSort,
                               isExpanded: true,
                               style: _sheetText,
-                              iconEnabledColor: const Color(0xFF212121),
+                              iconEnabledColor:
+                                  const Color(0xFF212121),
                               iconDisabledColor: Colors.grey,
                               dropdownColor: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius:
+                                  BorderRadius.circular(12),
                               menuMaxHeight: 280,
                               items: [
                                 DropdownMenuItem(
                                   value: AllProductsSort.newest,
                                   child: Text(
                                     'Default order',
-                                    style: _sheetText.copyWith(fontSize: 15),
+                                    style: _sheetText.copyWith(
+                                        fontSize: 15),
                                   ),
                                 ),
                                 DropdownMenuItem(
-                                  value: AllProductsSort.priceLowHigh,
+                                  value: AllProductsSort
+                                      .priceLowHigh,
                                   child: Text(
                                     'Price: Low to high',
-                                    style: _sheetText.copyWith(fontSize: 15),
+                                    style: _sheetText.copyWith(
+                                        fontSize: 15),
                                   ),
                                 ),
                                 DropdownMenuItem(
-                                  value: AllProductsSort.priceHighLow,
+                                  value: AllProductsSort
+                                      .priceHighLow,
                                   child: Text(
                                     'Price: High to low',
-                                    style: _sheetText.copyWith(fontSize: 15),
+                                    style: _sheetText.copyWith(
+                                        fontSize: 15),
                                   ),
                                 ),
                                 DropdownMenuItem(
                                   value: AllProductsSort.nameAZ,
                                   child: Text(
                                     'Name: A–Z',
-                                    style: _sheetText.copyWith(fontSize: 15),
+                                    style: _sheetText.copyWith(
+                                        fontSize: 15),
                                   ),
                                 ),
                               ],
                               onChanged: (v) {
                                 if (v != null) {
-                                  setModalState(() => localSort = v);
+                                  setModalState(
+                                      () => localSort = v);
                                 }
                               },
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
+
+                        // ── Action buttons ───────────────────────────
                         Row(
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => Navigator.pop(ctx),
+                                onPressed: () =>
+                                    Navigator.pop(ctx),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF212121),
+                                  foregroundColor:
+                                      const Color(0xFF212121),
                                 ),
                                 child: const Text('Cancel'),
                               ),
@@ -330,8 +603,11 @@ class AllProductsView extends GetView<AllProductsController> {
                             Expanded(
                               child: FilledButton(
                                 onPressed: () {
-                                  controller.applyPriceFilterFromSheet(range);
+                                  controller
+                                      .applyPriceFilterFromSheet(
+                                          range);
                                   controller.setSort(localSort);
+                                  controller.selectSize(localSize);
                                   Navigator.pop(ctx);
                                 },
                                 style: FilledButton.styleFrom(
@@ -354,74 +630,9 @@ class AllProductsView extends GetView<AllProductsController> {
       },
     );
   }
-
-  /// Categories from Firestore product `category` field only (no static list).
-  Widget _buildCategoryFilter() {
-    return Obx(() {
-      final labels = controller.categoryLabels;
-      if (labels.isEmpty) {
-        return const SizedBox.shrink();
-      }
-      return Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: SizedBox(
-          height: 38,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              _categoryChip(
-                label: 'All',
-                selected: controller.selectedCategory.value == null,
-                onTap: () => controller.selectCategory(null),
-              ),
-              ...labels.map(
-                (cat) => _categoryChip(
-                  label: cat,
-                  selected: controller.selectedCategory.value == cat,
-                  onTap: () => controller.selectCategory(cat),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _categoryChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected ? AppColors.primary : Colors.grey.shade300,
-            ),
-          ),
-          child: Text(
-            label,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: selected ? Colors.white : AppColors.textDark,
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
+
+// ── Product card ──────────────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
   final ProductItem product;
@@ -502,12 +713,35 @@ class _ProductCard extends StatelessWidget {
                             ),
                           ),
                         if (discountLabel != null) ...[
-                          if (product.isNew) const SizedBox(height: 4),
+                          if (product.isNew)
+                            const SizedBox(height: 4),
                           DiscountBadge(text: discountLabel),
                         ],
                       ],
                     ),
                   ),
+                  // Size badge
+                  if (product.size != null)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${product.size}ml',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     right: 8,
@@ -543,6 +777,16 @@ class _ProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (product.brandName != null)
+                    Text(
+                      product.brandName!,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 9,
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
                   Text(
                     product.name,
                     style: AppTextStyles.bodyLarge.copyWith(
@@ -564,9 +808,8 @@ class _ProductCard extends StatelessWidget {
                               'PKR ${(product.oldPrice ?? product.price).toStringAsFixed(0)}',
                               style: AppTextStyles.bodyMedium.copyWith(
                                 fontSize: 10,
-                                color: AppColors.textDark.withValues(
-                                  alpha: 0.4,
-                                ),
+                                color: AppColors.textDark
+                                    .withValues(alpha: 0.4),
                                 decoration: TextDecoration.lineThrough,
                               ),
                             ),

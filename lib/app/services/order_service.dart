@@ -141,7 +141,13 @@ class OrderService extends GetxService {
     final path = order.firestorePath;
     if (path == null) return;
     final ref = FirestoreService.instance.doc(path);
-    await ref.update({'status': status.name});
+    
+    final updates = <String, dynamic>{'status': status.name};
+    if (status == OrderStatus.delivered) {
+      updates['deliveredAt'] = FieldValue.serverTimestamp();
+    }
+    await ref.update(updates);
+    
     if (status == OrderStatus.delivered) {
       await _grantReferrerRewardIfEligible(ref);
     }

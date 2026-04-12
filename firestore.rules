@@ -33,12 +33,6 @@ service cloud.firestore {
         && request.resource.data.stock >= 0;
     }
 
-    function orderOnlyCancellationReadFlag() {
-      return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['cancellationUnreadForUser'])
-        && request.resource.data.cancellationUnreadForUser == false;
-    }
-
     // referralCode / referredBy: set once for owner; admin unrestricted via isAdmin() on update.
     function userReferralFieldsOk() {
       return (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['referralCode'])
@@ -49,6 +43,29 @@ service cloud.firestore {
             || (!resource.data.keys().hasAny(['referredBy'])
                 && request.resource.data.referredBy is string)
             || resource.data.referredBy == request.resource.data.referredBy);
+    }
+
+    function userBirthdayFieldsOk() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      
+      // 1. Birthday: set once
+      let birthdayOk = !diff.hasAny(['birthday']) || (
+        !resource.data.keys().hasAny(['birthday']) && request.resource.data.birthday is timestamp
+      );
+
+      // 2. Reward Flag: set once (false -> true)
+      let rewardFlagOk = !diff.hasAny(['birthdayRewardGiven']) || (
+        (!resource.data.keys().hasAny(['birthdayRewardGiven']) || resource.data.birthdayRewardGiven == false)
+        && request.resource.data.birthdayRewardGiven == true
+      );
+
+      // 3. Discount Usage: increment or set once per year (we just ensure it's an int and doesn't go backwards)
+      let discountYearOk = !diff.hasAny(['birthdayDiscountUsedYear']) || (
+        request.resource.data.birthdayDiscountUsedYear is int
+        && (!resource.data.keys().hasAny(['birthdayDiscountUsedYear']) || request.resource.data.birthdayDiscountUsedYear > resource.data.birthdayDiscountUsedYear)
+      );
+
+      return birthdayOk && rewardFlagOk && discountYearOk;
     }
 
     function oldWalletBalance() {
@@ -75,11 +92,28 @@ service cloud.firestore {
             && request.resource.data.wallet.pendingRewards is number
             && request.resource.data.wallet.balance <= oldWalletBalance() + 0.001
             && request.resource.data.wallet.balance >= 0
+            && request.resource.data.wallet.pendingRewards == oldWalletPending())
+        || (request.resource.data.wallet.balance is number 
+            && request.resource.data.wallet.balance == oldWalletBalance() + 250.0
+            && request.resource.data.wallet.pendingRewards == oldWalletPending())
+        || (request.resource.data.wallet.balance is number 
+            && request.resource.data.wallet.balance == oldWalletBalance() + 50.0
             && request.resource.data.wallet.pendingRewards == oldWalletPending());
     }
 
     function userOwnerUpdateOk() {
-      return userReferralFieldsOk() && userWalletOk();
+      return userReferralFieldsOk() && userWalletOk() && userBirthdayFieldsOk();
+    }
+
+    function orderClientUpdateOk() {
+      let diffKeys = request.resource.data.diff(resource.data).affectedKeys();
+      let hasCancel = diffKeys.hasAny(['cancellationUnreadForUser']);
+      let hasReview = diffKeys.hasAny(['reviewSubmitted']);
+      let hasOther = diffKeys.hasAny(request.resource.data.keys().removeAll(['cancellationUnreadForUser', 'reviewSubmitted']));
+      
+      return !hasOther 
+          && (!hasCancel || request.resource.data.cancellationUnreadForUser == false)
+          && (!hasReview || request.resource.data.reviewSubmitted == true);
     }
 
     function orderCreateClientOk() {
@@ -94,6 +128,10 @@ service cloud.firestore {
     match /{path=**}/orders/{orderId} {
       allow read: if isAdmin();
       allow write: if isAdmin();
+    }
+
+    match /{path=**}/reviews/{reviewId} {
+      allow read: if isAdmin();
     }
 
     match /{path=**}/referrals/{referralId} {
@@ -114,6 +152,12 @@ service cloud.firestore {
     }
 
     match /discounts/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Perfume brand directory: anyone reads, admin manages.
+    match /brands/{brandId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
@@ -147,7 +191,7 @@ service cloud.firestore {
         allow create: if isOwner(userId)
           && request.resource.data.userId == userId
           && orderCreateClientOk();
-        allow update: if isAdmin() || (isOwner(userId) && orderOnlyCancellationReadFlag());
+        allow update: if isAdmin() || (isOwner(userId) && orderClientUpdateOk());
         allow delete: if isAdmin();
       }
 

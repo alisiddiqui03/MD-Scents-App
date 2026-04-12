@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import 'core/constants/app_constants.dart';
@@ -25,9 +26,12 @@ import 'app/services/wishlist_service.dart';
 import 'app/services/review_service.dart';
 import 'app/services/address_service.dart';
 import 'app/services/admin_order_alert_service.dart';
+import 'app/services/brand_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load();
 
   await GetStorage.init();
 
@@ -62,6 +66,7 @@ Future<void> main() async {
   Get.put<WalletService>(WalletService());
   Get.put<ReferralService>(ReferralService());
   Get.put<AdminReferralsService>(AdminReferralsService());
+  Get.put<BrandService>(BrandService());
 
   runApp(const MdScentsApp());
 }

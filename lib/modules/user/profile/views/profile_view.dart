@@ -47,7 +47,7 @@ class ProfileView extends GetView<ProfileController> {
                   ],
                   const SizedBox(height: 24),
                   _buildSectionTitle('My Account'),
-                  _buildAccountSection(),
+                  _buildAccountSection(context),
                   const SizedBox(height: 20),
                   _buildSectionTitle('Support'),
                   _buildSupportSection(context),
@@ -168,8 +168,10 @@ class ProfileView extends GetView<ProfileController> {
                 ],
               ),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -301,7 +303,7 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  Widget _buildAccountSection() {
+  Widget _buildAccountSection(BuildContext context) {
     return Obx(() {
       final admin = AuthService.to.currentUser.value?.isAdmin == true;
       return _MenuCard(
@@ -315,6 +317,7 @@ class ProfileView extends GetView<ProfileController> {
               onTap: () => Get.toNamed(Routes.USER_REFER_EARN),
             ),
           ),
+          _buildBirthdayTile(context),
           Obx(
             () => _MenuItemTile(
               item: _MenuItem(
@@ -327,6 +330,15 @@ class ProfileView extends GetView<ProfileController> {
                 color: AppColors.primary,
                 onTap: () => Get.toNamed(Routes.USER_ORDERS),
               ),
+            ),
+          ),
+          _MenuItemTile(
+            item: _MenuItem(
+              icon: Icons.reviews_outlined,
+              label: 'My Reviews',
+              subtitle: 'Your photo reviews and rewards',
+              color: AppColors.accent,
+              onTap: () => Get.toNamed('/user/my-reviews'),
             ),
           ),
           if (admin)
@@ -364,6 +376,15 @@ class ProfileView extends GetView<ProfileController> {
               subtitle: 'View available discounts',
               color: AppColors.accent,
               onTap: () => Get.toNamed(Routes.USER_DISCOUNT),
+            ),
+          ),
+          _MenuItemTile(
+            item: _MenuItem(
+              icon: Icons.delete_outline,
+              label: 'Delete account',
+              subtitle: 'Remove your profile, wallet, referrals and rewards',
+              color: AppColors.danger,
+              onTap: () => _showDeleteAccountDialog(context),
             ),
           ),
         ],
@@ -414,22 +435,36 @@ class ProfileView extends GetView<ProfileController> {
               context,
               title: '🛡️ Privacy Policy',
               content:
-                  'Effective Date: 23rd March 2026\n\n'
+                  'Effective Date: 11 April 2026\n\n'
                   'MD Scents values your privacy and is committed to protecting your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.\n\n'
                   '1. Information We Collect\n'
-                  'Account Information: When you register via Google, Email, or Phone Number (OTP), we collect your name, email address, and phone number.\n'
-                  'Transaction Data: To process your orders, we collect your delivery address, billing details, and payment receipts (for Bank Transfers). We do not store your credit card or bank login details.\n'
-                  'App Activity: We track your wishlist items, order history, and discount tier progress to provide a personalized experience.\n\n'
+                  'Account Information: When you register via Google, email, or phone number, we may collect your name, email address, and contact details.\n'
+                  'Transaction Data: To process your orders, we collect your delivery address, billing details, and payment proof (such as screenshots for manual bank transfers). We do not collect or store your credit/debit card details or banking credentials.\n'
+                  'App Activity: We may track your wishlist items, order history, and discount-related activity to improve your user experience.\n'
+                  'Device Information: We may collect non-personal device data, such as device identifiers (e.g., Firebase Cloud Messaging token) and Advertising IDs, for notifications, ad delivery, and app functionality.\n\n'
                   '2. How We Use Your Information\n'
-                  '• To process and deliver your perfume orders.\n'
-                  '• To manage your account, including tracking your "Boost Discount" progress.\n'
-                  '• To send you order updates, tracking information, and customer support responses.\n\n'
+                  'To process, fulfill, and deliver your orders.\n'
+                  'To manage your account and personalize your user experience.\n'
+                  'To send order updates, shipping statuses, and promotional notifications.\n'
+                  'To provide customer support and respond to inquiries.\n\n'
                   '3. Third-Party Services & Advertising\n'
-                  'To power our "Boost Discount" feature, MD Scents uses third-party advertising services (such as Google AdMob). These services may collect non-personal device data (like your device ID or IP address) to serve relevant video advertisements. We do not share your personal identity, order history, or contact information with these advertisers.\n\n'
-                  '4. Data Security\n'
-                  'We implement industry-standard security measures to protect your account and personal information from unauthorized access. Your authentication data (like passwords and OTPs) is strictly encrypted.\n\n'
-                  '5. Your Rights\n'
-                  'You have the right to access, update, or delete your personal information at any time. You can manage your details directly from the "My Profile" section of the app or request account deletion by contacting our support team.',
+                  'We use third-party services, such as Google AdMob, to display promotional advertisements within the app. These services may collect non-personal data, such as your IP address and mobile Advertising ID, to provide relevant ads and calculate discount rewards.\n'
+                  'We also use Firebase services (provided by Google) for user authentication, push notifications, and app functionality. Firebase may collect device-related information and identifiers to ensure the proper performance of app features and to deliver notifications successfully.\n'
+                  'We strictly do not share your personal identifiable information (such as your name, email, or exact order details) with these third-party advertisers.\n\n'
+                  '4. Payment Information\n'
+                  'We offer Cash on Delivery (COD) and manual Bank Transfer options. For bank transfers, users are required to upload payment proof (such as a receipt screenshot) directly into the app. We do not collect, process, or store sensitive financial information like credit/debit card numbers or banking passwords.\n\n'
+                  '5. Data Security\n'
+                  'We implement industry-standard security measures to protect your personal data from unauthorized access, alteration, or disclosure. All sensitive information and account authentication data is transmitted securely using encryption.\n\n'
+                  '6. Data Retention and Deletion\n'
+                  'We retain your personal data only for as long as necessary to provide our services, fulfill your orders, and comply with legal obligations.\n'
+                  'You may request the complete deletion of your account and associated personal data at any time. You can delete your account directly within the app\'s profile settings or request deletion by emailing us at the contact address provided below.\n\n'
+                  '7. Your Rights\n'
+                  'You have the right to access, update, correct, or delete your personal information. You can manage your profile details directly within the MD Scents app or contact our support team for assistance.\n\n'
+                  '8. Children\'s Privacy\n'
+                  'This application is not intended for children under the age of 13. We do not knowingly collect or solicit personal data from children. If we discover that a child under 13 has provided us with personal information, we will delete it immediately.\n\n'
+                  '9. Contact Us\n'
+                  'If you have any questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact us at:\n'
+                  'Email: umair.1917@gmail.com',
             ),
           ),
         ),
@@ -472,7 +507,59 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
+  Widget _buildBirthdayTile(BuildContext context) {
+    return Obx(() {
+      final user = AuthService.to.currentUser.value;
+      if (user == null) return const SizedBox.shrink();
+
+      final hasBirthday = user.birthday != null;
+      final birthdayStr = hasBirthday
+          ? '${user.birthday!.day}/${user.birthday!.month}/${user.birthday!.year}'
+          : 'Not set yet';
+
+      return _MenuItemTile(
+        item: _MenuItem(
+          icon: Icons.cake_outlined,
+          label: 'Birthday Reward',
+          subtitle: hasBirthday
+              ? 'Birthday: $birthdayStr (Contact support to change)'
+              : 'Set your birthday to earn 50 PKR reward!',
+          color: hasBirthday ? Colors.grey : AppColors.primary,
+          onTap: hasBirthday
+              ? null
+              : () {
+                  final now = DateTime.now();
+                  showDatePicker(
+                    context: context,
+                    initialDate: DateTime(now.year - 20),
+                    firstDate: DateTime(now.year - 100),
+                    lastDate: now,
+                    helpText: 'SELECT YOUR BIRTHDAY',
+                    builder: (context, child) {
+                      return Theme(
+                        data: ThemeData.light().copyWith(
+                          colorScheme: const ColorScheme.light(
+                            primary: AppColors.primary,
+                            onPrimary: Colors.white,
+                            onSurface: AppColors.textDark,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  ).then((picked) {
+                    if (picked != null) {
+                      controller.setBirthday(picked);
+                    }
+                  });
+                },
+        ),
+      );
+    });
+  }
+
   void _showInfoDialog(
+
     BuildContext context, {
     required String title,
     required String content,
@@ -494,6 +581,120 @@ class ProfileView extends GetView<ProfileController> {
             child: Text(
               'Close',
               style: AppTextStyles.bodyLarge.copyWith(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final user = AuthService.to.firebaseUser.value;
+    final hasEmailProvider =
+        user?.providerData.any(
+          (provider) => provider.providerId == 'password',
+        ) ==
+        true;
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Delete account', style: AppTextStyles.titleLarge),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This will permanently delete your profile, wallet balance, referral rewards, order history, wishlist, addresses, reviews, and all personalization.',
+                  style: AppTextStyles.bodyMedium.copyWith(height: 1.5),
+                ),
+                const SizedBox(height: 14),
+                if (hasEmailProvider) ...[
+                  Text(
+                    'Please confirm your password to continue.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark.withValues(alpha: 0.7),
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Password is required';
+                      }
+                      return null;
+                    },
+                  ),
+                ] else ...[
+                  Text(
+                    'Your Google account will be used to confirm deletion.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark.withValues(alpha: 0.7),
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.textDark.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (hasEmailProvider &&
+                  !(formKey.currentState?.validate() ?? false)) {
+                return;
+              }
+              Navigator.pop(context);
+
+              try {
+                await controller.deleteAccount(
+                  password: hasEmailProvider
+                      ? passwordController.text.trim()
+                      : null,
+                );
+              } catch (error) {
+                Get.snackbar(
+                  'Unable to delete account',
+                  error is Exception ? error.toString() : 'Please try again.',
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: AppColors.danger,
+                  colorText: Colors.white,
+                  borderRadius: 12,
+                  margin: const EdgeInsets.all(12),
+                );
+              }
+            },
+            child: Text(
+              'Delete',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.danger,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -805,14 +1006,14 @@ class _MenuItem {
   final String subtitle;
   final String? badge;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _MenuItem({
     required this.icon,
     required this.label,
     required this.subtitle,
     required this.color,
-    required this.onTap,
+    this.onTap,
     this.badge,
   });
 }

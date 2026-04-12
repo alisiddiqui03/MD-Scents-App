@@ -462,6 +462,13 @@ class _QuickNavCard extends StatelessWidget {
             subtitle: 'Payments & status',
             onTap: () => base.currentIndex.value = 2,
           ),
+          const Divider(height: 1),
+          _QuickTile(
+            icon: Icons.reviews_outlined,
+            label: 'All Reviews',
+            subtitle: 'User picture reviews & rewards',
+            onTap: () => Get.toNamed('/admin/all-reviews'),
+          ),
         ],
       ),
     );

@@ -563,6 +563,56 @@ class CartView extends GetView<CartController> {
               ),
               const SizedBox(height: 14),
             ],
+            if (controller.canUseBirthdayDiscount) ...[
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.pink.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.cake_outlined,
+                      color: Colors.pink,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Birthday Month Offer!',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.pink.shade700,
+                          ),
+                        ),
+                        Text(
+                          'Enjoy 10% OFF on your birthday month.',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontSize: 12,
+                            color: AppColors.textDark.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Obx(
+                    () => Switch(
+                      value: controller.applyBirthdayDiscount.value,
+                      activeColor: Colors.pink,
+                      onChanged: (v) => controller.applyBirthdayDiscount.value = v,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 24),
+            ],
             Row(
               children: [
                 Expanded(
