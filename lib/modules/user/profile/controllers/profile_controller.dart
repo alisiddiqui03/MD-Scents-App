@@ -10,6 +10,7 @@ import '../../../../app/services/wishlist_service.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../app/data/models/points_history.dart';
 
 class ProfileController extends GetxController {
   final AuthService _authService = AuthService.to;
@@ -52,29 +53,31 @@ class ProfileController extends GetxController {
           throw 'Birthday already set';
         }
 
-        final w = data['wallet'];
-        double bal = 0;
-        double pend = 0;
-        if (w is Map) {
-          bal = (w['balance'] as num?)?.toDouble() ?? 0;
-          pend = (w['pendingRewards'] as num?)?.toDouble() ?? 0;
-        }
+        final currentPoints = (data['points'] as num?)?.toInt() ?? 0;
 
         txn.update(userRef, {
           'birthday': Timestamp.fromDate(date),
           'birthdayRewardGiven': true,
-          'wallet': {
-            'balance': bal + 50.0,
-            'pendingRewards': pend,
-          },
+          'points': currentPoints + 10,
         });
+
+        // Add to history
+        final historyRef =
+            FirestoreService.usersPointsHistoryRef(user.uid).doc();
+        final historyItem = PointHistoryItem(
+          id: historyRef.id,
+          type: 'birthday',
+          points: 10,
+          createdAt: DateTime.now(),
+        );
+        txn.set(historyRef, historyItem.toMap());
       });
 
       await _authService.refreshProfile();
 
       Get.snackbar(
         'Birthday Saved! 🎉',
-        'Your 50 PKR birthday reward has been added to your wallet.',
+        'Your 10 points birthday reward has been added to your wallet.',
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.success,
         colorText: Colors.white,

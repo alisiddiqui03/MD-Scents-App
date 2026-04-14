@@ -9,6 +9,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/utils/order_action_time.dart';
 import '../../../../app/widgets/app_branded_loading.dart';
+import '../../../../app/data/models/points_history.dart';
 
 class WalletView extends GetView<WalletController> {
   const WalletView({super.key});
@@ -26,7 +27,14 @@ class WalletView extends GetView<WalletController> {
             color: AppColors.textDark,
             size: 18,
           ),
-          onPressed: () => Get.back(),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Get.back();
+            } else {
+              // Fallback to Profile/Home via UserBaseController if we can't pop
+              Get.back(closeOverlays: true);
+            }
+          },
         ),
         title: Text(
           'My Wallet',
@@ -154,6 +162,8 @@ class WalletView extends GetView<WalletController> {
                   children: list.map((e) => _rewardTile(e)).toList(),
                 );
               }),
+              const SizedBox(height: 28),
+              _buildPointsSection(),
             ],
           ),
         );
@@ -270,6 +280,235 @@ class WalletView extends GetView<WalletController> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPointsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(color: Colors.grey.shade100),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Points',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textDark.withValues(alpha: 0.6),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Obx(
+                        () => Text(
+                          '${WalletService.to.points.value} pts',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Obx(() {
+                    final pts = WalletService.to.points.value;
+                    final canRedeem = pts >= 500;
+                    return ElevatedButton(
+                      onPressed: canRedeem
+                          ? () => _showRedeemConfirmDialog()
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade200,
+                        disabledForegroundColor: Colors.grey.shade500,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        elevation: 0,
+                      ),
+                      child: controller.isRedeeming.value
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Redeem',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    );
+                  }),
+                ],
+              ),
+              const Divider(height: 32),
+              Text(
+                'Redeem 500 points for PKR 2500 wallet credit.',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 12,
+                  color: AppColors.textDark.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text(
+          'Points history',
+          style: AppTextStyles.titleLarge.copyWith(fontSize: 16),
+        ),
+        const SizedBox(height: 12),
+        Obx(() {
+          final list = controller.pointsHistory;
+          if (list.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                'No points history yet. Earn points by setting your birthday and reviewing products!',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textDark.withValues(alpha: 0.55),
+                  height: 1.5,
+                ),
+              ),
+            );
+          }
+          return Column(
+            children: list.map((e) => _pointsHistoryTile(e)).toList(),
+          );
+        }),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _pointsHistoryTile(PointHistoryItem e) {
+    final isNegative = e.points < 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: (isNegative ? Colors.orange : AppColors.success)
+                  .withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isNegative ? Icons.redeem_rounded : Icons.add_task_rounded,
+              color: isNegative ? Colors.orange : AppColors.success,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  e.title,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formatOrderActionTime(e.createdAt),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 11,
+                    color: AppColors.textDark.withValues(alpha: 0.45),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${e.points > 0 ? '+' : ''}${e.points}',
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: isNegative ? Colors.red : AppColors.success,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRedeemConfirmDialog() {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Redeem Points', style: AppTextStyles.titleLarge),
+        content: Text(
+          'Are you sure you want to redeem 500 points for PKR 2500 credit?',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textDark.withValues(alpha: 0.6),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.textDark.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Get.back();
+              controller.redeemPoints();
+            },
+            child: Text(
+              'Redeem',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

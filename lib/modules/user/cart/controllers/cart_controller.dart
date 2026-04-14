@@ -62,6 +62,8 @@ class CartController extends GetxController {
   /// 0 = unknown (loading), otherwise count of past orders for referral UI.
   final completedOrderCount = (-1).obs;
   final applyWalletBalance = false.obs;
+  final walletAmountController = TextEditingController();
+  final customWalletAmount = 0.0.obs;
   final applyBirthdayDiscount = false.obs;
   final referralCodeController = TextEditingController();
 
@@ -219,6 +221,7 @@ class CartController extends GetxController {
     deliveryCityController.dispose();
     deliveryPostalController.dispose();
     referralCodeController.dispose();
+    walletAmountController.dispose();
     _referralPreviewDebounce?.cancel();
     super.onClose();
   }
@@ -352,9 +355,39 @@ class CartController extends GetxController {
   /// PKR applied from wallet for this checkout (server debits the same amount).
   double get walletAppliedAmount {
     if (!applyWalletBalance.value) return 0;
+    return customWalletAmount.value;
+  }
+
+  void onWalletAmountChanged(String val) {
+    if (val.isEmpty) {
+      customWalletAmount.value = 0;
+      return;
+    }
+    final amt = double.tryParse(val) ?? 0;
     final bal = WalletService.to.balance.value;
-    if (bal <= 0) return 0;
-    return bal.clamp(0, merchandiseTotal);
+    final max = bal < merchandiseTotal ? bal : merchandiseTotal;
+
+    if (amt > max) {
+      customWalletAmount.value = max;
+      walletAmountController.text = max.toStringAsFixed(0);
+      walletAmountController.selection = TextSelection.fromPosition(
+        TextPosition(offset: walletAmountController.text.length),
+      );
+    } else if (amt < 0) {
+      customWalletAmount.value = 0;
+      walletAmountController.text = '0';
+    } else {
+      customWalletAmount.value = amt;
+    }
+  }
+
+  void applyMaxWallet() {
+    final bal = WalletService.to.balance.value;
+    final max = bal < merchandiseTotal ? bal : merchandiseTotal;
+    if (max <= 0) return;
+
+    walletAmountController.text = max.toStringAsFixed(0);
+    customWalletAmount.value = max;
   }
 
   /// Amount the customer still pays after wallet (COD / bank).

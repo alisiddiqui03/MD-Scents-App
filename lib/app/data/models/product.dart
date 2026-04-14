@@ -24,6 +24,9 @@ class ProductItem {
   /// Brand name (e.g. "Creed"). Nullable for old products without a brand.
   final String? brandName;
 
+  /// Actual size shown to users (e.g. "80ml", "125ml"). Captures manual input.
+  final String? unitSize;
+
   /// Set by Firestore on create/update (admin inventory).
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -47,6 +50,7 @@ class ProductItem {
     this.description,
     this.size,
     this.brandName,
+    this.unitSize,
     this.createdAt,
     this.updatedAt,
   });
@@ -94,6 +98,10 @@ class ProductItem {
         final b = data['brandName'] as String?;
         return (b == null || b.trim().isEmpty) ? null : b.trim();
       }(),
+      unitSize: () {
+        final u = data['unitSize'] as String?;
+        return (u == null || u.trim().isEmpty) ? null : u.trim();
+      }(),
       createdAt: _tsToDate(data['createdAt']),
       updatedAt: _tsToDate(data['updatedAt']),
     );
@@ -123,6 +131,7 @@ class ProductItem {
     };
     if (size != null) map['size'] = size;
     if (brandName != null && brandName!.isNotEmpty) map['brandName'] = brandName;
+    if (unitSize != null && unitSize!.isNotEmpty) map['unitSize'] = unitSize;
     return map;
   }
 }

@@ -638,12 +638,47 @@ class CartView extends GetView<CartController> {
                 ),
                 Switch(
                   value: controller.applyWalletBalance.value && canUseWallet,
+                  activeColor: AppColors.primary,
                   onChanged: canUseWallet
-                      ? (v) => controller.applyWalletBalance.value = v
+                      ? (v) {
+                          controller.applyWalletBalance.value = v;
+                          if (v) {
+                            controller.applyMaxWallet();
+                          } else {
+                            controller.walletAmountController.clear();
+                            controller.customWalletAmount.value = 0;
+                          }
+                        }
                       : null,
                 ),
               ],
             ),
+            if (controller.applyWalletBalance.value && canUseWallet) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller.walletAmountController,
+                keyboardType: TextInputType.number,
+                style: _deliveryInputTextStyle.copyWith(fontSize: 15),
+                cursorColor: AppColors.primary,
+                onChanged: controller.onWalletAmountChanged,
+                decoration: _deliveryFieldDecoration(
+                  label: 'Amount to use (PKR)',
+                  hint: 'Enter amount',
+                ).copyWith(
+                  suffixIcon: TextButton(
+                    onPressed: controller.applyMaxWallet,
+                    child: Text(
+                      'MAX',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             if (!canUseWallet && controller.items.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -1010,6 +1045,18 @@ class _CartItemCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (product?.unitSize != null && product!.unitSize!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        'Size: ${product.unitSize}${product.unitSize!.toLowerCase().contains('ml') ? '' : 'ml'}',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.secondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 4),
                   Text(
                     'PKR ${item.unitPrice.toStringAsFixed(0)} / unit',

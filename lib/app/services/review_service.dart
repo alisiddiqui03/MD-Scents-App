@@ -5,14 +5,15 @@ import '../data/models/review.dart';
 import '../data/models/order.dart';
 import 'auth_service.dart';
 import 'firestore_service.dart';
+import '../data/models/points_history.dart';
 
 class ReviewService extends GetxService {
   ReviewService();
 
   static ReviewService get to => Get.find<ReviewService>();
 
-  /// Reward amount for submitting a picture review.
-  static const double kReviewRewardPkr = 250.0;
+  /// Reward points for submitting a picture review.
+  static const int kReviewRewardPoints = 50;
 
   /// Fetches all reviews for a specific user (for "My Reviews" section).
   Stream<List<ReviewItem>> userReviewsStream(String uid) {
@@ -85,14 +86,7 @@ class ReviewService extends GetxService {
       final userName =
           userData['displayName'] as String? ?? order.customerName;
 
-      // ── Calculate new wallet balance ──────────────────────────────────────
-      final walletMap = userData['wallet'] is Map
-          ? Map<String, dynamic>.from(userData['wallet'])
-          : <String, dynamic>{'balance': 0.0, 'pendingRewards': 0.0};
-
-      final currentBalance =
-          (walletMap['balance'] as num?)?.toDouble() ?? 0.0;
-      walletMap['balance'] = currentBalance + kReviewRewardPkr;
+      final currentPoints = (userData['points'] as num?)?.toInt() ?? 0;
 
       // ── 1. Create the ReviewItem ──────────────────────────────────────────
       final review = ReviewItem(
@@ -109,11 +103,22 @@ class ReviewService extends GetxService {
 
       tx.set(reviewRef, review.toMap());
 
-      // ── 2. Update Order ───────────────────────────────────────────────────
-      tx.update(orderRef, {'reviewSubmitted': true});
+      // ── 2. Update User Points ─────────────────────────────────────────────
+      tx.update(userRef, {'points': currentPoints + kReviewRewardPoints});
 
-      // ── 3. Update Wallet ──────────────────────────────────────────────────
-      tx.set(userRef, {'wallet': walletMap}, SetOptions(merge: true));
+      // ── 3. Add to Points History ─────────────────────────────────────────
+      final historyRef = FirestoreService.usersPointsHistoryRef(uid).doc();
+      final historyItem = PointHistoryItem(
+        id: historyRef.id,
+        type: 'review',
+        points: kReviewRewardPoints,
+        createdAt: DateTime.now(),
+        referenceId: orderId,
+      );
+      tx.set(historyRef, historyItem.toMap());
+
+      // ── 4. Update Order ───────────────────────────────────────────────────
+      tx.update(orderRef, {'reviewSubmitted': true});
     });
   }
 }

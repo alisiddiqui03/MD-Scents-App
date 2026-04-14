@@ -23,6 +23,7 @@ class UploadProductController extends GetxController {
   final priceController = TextEditingController();
   final stockController = TextEditingController();
   final discountController = TextEditingController();
+  final unitSizeController = TextEditingController();
 
   // ── Toggles ─────────────────────────────────────────────────────────────────
   final isFeatured = false.obs;
@@ -101,6 +102,7 @@ class UploadProductController extends GetxController {
         isFeatured.value = existing.isFeatured;
         isActive.value = existing.isActive;
         selectedSize.value = existing.size;
+        unitSizeController.text = existing.unitSize ?? '';
       }
     }
   }
@@ -113,6 +115,7 @@ class UploadProductController extends GetxController {
     stockController.dispose();
     discountController.dispose();
     newBrandController.dispose();
+    unitSizeController.dispose();
     super.onClose();
   }
 
@@ -280,6 +283,7 @@ class UploadProductController extends GetxController {
         description: desc.isEmpty ? null : desc,
         size: selectedSize.value,
         brandName: (brand != null && brand.isNotEmpty) ? brand : null,
+        unitSize: unitSizeController.text.trim(),
       );
 
       await _productService.upsertProduct(product);

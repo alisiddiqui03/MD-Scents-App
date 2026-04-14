@@ -9,6 +9,7 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/services/wallet_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/widgets/app_branded_loading.dart';
 
@@ -514,7 +515,7 @@ class ProfileView extends GetView<ProfileController> {
 
       final hasBirthday = user.birthday != null;
       final birthdayStr = hasBirthday
-          ? '${user.birthday!.day}/${user.birthday!.month}/${user.birthday!.year}'
+          ? DateFormat('dd MMMM yyyy').format(user.birthday!)
           : 'Not set yet';
 
       return _MenuItemTile(
@@ -523,7 +524,7 @@ class ProfileView extends GetView<ProfileController> {
           label: 'Birthday Reward',
           subtitle: hasBirthday
               ? 'Birthday: $birthdayStr (Contact support to change)'
-              : 'Set your birthday to earn 50 PKR reward!',
+              : 'Set your birthday to earn 10 points reward!',
           color: hasBirthday ? Colors.grey : AppColors.primary,
           onTap: hasBirthday
               ? null

@@ -68,6 +68,12 @@ service cloud.firestore {
       return birthdayOk && rewardFlagOk && discountYearOk;
     }
 
+    function userPointsFieldsOk() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      // Owner can set points or update them via our app logic (transactions).
+      return !diff.hasAny(['points']) || request.resource.data.points is number;
+    }
+
     function oldWalletBalance() {
       return resource.data.keys().hasAny(['wallet'])
         && resource.data.wallet.keys().hasAny(['balance'])
@@ -98,11 +104,14 @@ service cloud.firestore {
             && request.resource.data.wallet.pendingRewards == oldWalletPending())
         || (request.resource.data.wallet.balance is number 
             && request.resource.data.wallet.balance == oldWalletBalance() + 50.0
+            && request.resource.data.wallet.pendingRewards == oldWalletPending())
+        || (request.resource.data.wallet.balance is number 
+            && request.resource.data.wallet.balance == oldWalletBalance() + 2500.0
             && request.resource.data.wallet.pendingRewards == oldWalletPending());
     }
 
     function userOwnerUpdateOk() {
-      return userReferralFieldsOk() && userWalletOk() && userBirthdayFieldsOk();
+      return userReferralFieldsOk() && userWalletOk() && userBirthdayFieldsOk() && userPointsFieldsOk();
     }
 
     function orderClientUpdateOk() {
@@ -184,7 +193,7 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
       allow update: if isAdmin() || (isOwner(userId) && userOwnerUpdateOk());
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isOwner(userId);
 
       match /orders/{orderId} {
         allow read: if isOwner(userId) || isAdmin();
@@ -192,7 +201,7 @@ service cloud.firestore {
           && request.resource.data.userId == userId
           && orderCreateClientOk();
         allow update: if isAdmin() || (isOwner(userId) && orderClientUpdateOk());
-        allow delete: if isAdmin();
+        allow delete: if isAdmin() || isOwner(userId);
       }
 
       match /referrals/{referralId} {
@@ -217,6 +226,12 @@ service cloud.firestore {
 
       match /reviews/{productId} {
         allow read, write: if isOwner(userId);
+      }
+
+      match /points_history/{historyId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId);
+        allow update, delete: if false;
       }
     }
   }

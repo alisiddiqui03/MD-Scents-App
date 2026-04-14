@@ -80,6 +80,7 @@ class AuthService extends GetxService {
         role: 'user',
         referralCode: null,
         referredBy: null,
+        points: 0,
       );
       await _firestore.collection('users').doc(user.uid).set({
         ...fallback.toMap(),
@@ -138,6 +139,7 @@ class AuthService extends GetxService {
       role: role,
       referralCode: null,
       referredBy: null,
+      points: 0,
     );
     await _firestore.collection('users').doc(user.uid).set({
       ...profile.toMap(),

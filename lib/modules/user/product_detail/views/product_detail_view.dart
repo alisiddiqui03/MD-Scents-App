@@ -350,9 +350,26 @@ class ProductDetailView extends GetView<ProductDetailController> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Text(
-            name,
-            style: AppTextStyles.headlineMedium.copyWith(fontSize: 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: AppTextStyles.headlineMedium.copyWith(fontSize: 22),
+              ),
+              if (controller.product.unitSize != null &&
+                  controller.product.unitSize!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Size: ${controller.product.unitSize}${controller.product.unitSize!.toLowerCase().contains('ml') ? '' : 'ml'}',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.secondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         Obx(() => GestureDetector(

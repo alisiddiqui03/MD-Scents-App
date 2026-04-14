@@ -40,7 +40,8 @@ class FeaturedProductsView extends GetView<FeaturedProductsController> {
           IconButton(
             onPressed: () => _showFilterSheet(context),
             icon: Obx(() {
-              final active = controller.priceFilterActive.value;
+              final active = controller.priceFilterActive.value ||
+                  controller.selectedSize.value != null;
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -101,6 +102,7 @@ class FeaturedProductsView extends GetView<FeaturedProductsController> {
         return Column(
           children: [
             _buildCategoryFilter(),
+            _buildSizeCategoryFilter(),
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.primary,
@@ -422,6 +424,91 @@ class FeaturedProductsView extends GetView<FeaturedProductsController> {
     });
   }
 
+  // ── Size category filter row ──────────────────────────────────────────────────
+
+  Widget _buildSizeCategoryFilter() {
+    return Obx(() {
+      final sizes = [30, 50, 100, 200];
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 6),
+              child: Text(
+                'Size category',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark.withValues(alpha: 0.5),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _filterChip(
+                    label: 'All',
+                    selected: controller.selectedSize.value == null,
+                    onTap: () => controller.selectSize(null),
+                    color: AppColors.accent,
+                  ),
+                  ...sizes.map(
+                    (ml) => _filterChip(
+                      label: '${ml}ml',
+                      selected: controller.selectedSize.value == ml,
+                      onTap: () => controller.selectSize(ml),
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _filterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    Color color = AppColors.primary,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? color : Colors.grey.shade300,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: selected ? Colors.white : AppColors.textDark,
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _categoryChip({
     required String label,
     required bool selected,
@@ -579,6 +666,18 @@ class _FeaturedProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (product.unitSize != null && product.unitSize!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '${product.unitSize}${product.unitSize!.toLowerCase().contains('ml') ? '' : 'ml'}',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.secondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -99,7 +99,7 @@ class WriteReviewController extends GetxController {
       Get.back(); // close write screen
       Get.snackbar(
         'Reward Earned! 💸',
-        'Your review is submitted and 250 PKR has been added to your wallet.',
+        'Your review is submitted and 50 points has been added to your wallet.',
         snackPosition: SnackPosition.TOP,
         margin: const EdgeInsets.all(16),
         backgroundColor: Colors.green.shade100,

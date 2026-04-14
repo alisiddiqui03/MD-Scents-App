@@ -14,6 +14,7 @@ class WalletService extends GetxService {
 
   final balance = 0.0.obs;
   final pendingRewards = 0.0.obs;
+  final points = 0.obs;
   final isLoading = true.obs;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
@@ -52,6 +53,7 @@ class WalletService extends GetxService {
         balance.value = 0;
         pendingRewards.value = 0;
       }
+      points.value = (data['points'] as num?)?.toInt() ?? 0;
       isLoading.value = false;
     });
   }

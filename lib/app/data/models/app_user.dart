@@ -8,6 +8,7 @@ class AppUser {
   final DateTime? birthday;
   final bool birthdayRewardGiven;
   final int? birthdayDiscountUsedYear;
+  final int points;
 
   /// Public share code (unique; stored in Firestore + `referralCodes/{code}`).
   final String? referralCode;
@@ -25,6 +26,7 @@ class AppUser {
     this.displayName,
     this.referralCode,
     this.referredBy,
+    this.points = 0,
   });
 
   bool get isAdmin => role == 'admin';
@@ -43,6 +45,7 @@ class AppUser {
       birthdayDiscountUsedYear: map['birthdayDiscountUsedYear'] as int?,
       referralCode: map['referralCode'] as String?,
       referredBy: map['referredBy'] as String?,
+      points: (map['points'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -54,6 +57,7 @@ class AppUser {
       'birthday': birthday != null ? Timestamp.fromDate(birthday!) : null,
       'birthdayRewardGiven': birthdayRewardGiven,
       'birthdayDiscountUsedYear': birthdayDiscountUsedYear,
+      'points': points,
     };
     if (referralCode != null) m['referralCode'] = referralCode;
     if (referredBy != null) m['referredBy'] = referredBy;

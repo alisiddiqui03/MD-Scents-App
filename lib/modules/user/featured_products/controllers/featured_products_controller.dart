@@ -11,6 +11,9 @@ class FeaturedProductsController extends GetxController {
   /// `null` = all categories among featured.
   final selectedCategory = Rxn<String>();
 
+  /// `null` = all sizes among featured.
+  final selectedSize = Rxn<int>();
+
   final priceFilterActive = false.obs;
   final appliedPriceRange = AllProductsController.kPriceBounds.obs;
   final sort = AllProductsSort.newest.obs;
@@ -59,6 +62,12 @@ class FeaturedProductsController extends GetxController {
       }).toList();
     }
 
+    // Size filter
+    final size = selectedSize.value;
+    if (size != null) {
+      list = list.where((p) => p.size == size).toList();
+    }
+
     switch (sortMode) {
       case AllProductsSort.priceLowHigh:
         list.sort((a, b) => _productService
@@ -83,6 +92,10 @@ class FeaturedProductsController extends GetxController {
 
   void selectCategory(String? category) {
     selectedCategory.value = category;
+  }
+
+  void selectSize(int? size) {
+    selectedSize.value = size;
   }
 
   void applyPriceFilterFromSheet(RangeValues values) {

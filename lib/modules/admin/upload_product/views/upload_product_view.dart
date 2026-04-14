@@ -77,6 +77,23 @@ class UploadProductView extends GetView<UploadProductController> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  // ── Actual Size (Manual Input) ───────────────────────────
+                  TextField(
+                    controller: controller.unitSizeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Actual Size (e.g. 80ml, 125ml)',
+                      hintText: 'What users will see as size',
+                      prefixIcon: Icon(Icons.straighten_outlined),
+                    ),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textDark,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // ── Size (ml) selector (NOW AS CATEGORY) ────────────────────────
+                  _buildSizeSelector(),
+                  const SizedBox(height: 20),
 
                   // ── Price ────────────────────────────────────────────────
                   TextField(
@@ -138,10 +155,6 @@ class UploadProductView extends GetView<UploadProductController> {
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // ── Size (ml) selector ───────────────────────────────────
-                  _buildSizeSelector(),
                   const SizedBox(height: 20),
 
                   // ── Images ───────────────────────────────────────────────
@@ -445,15 +458,15 @@ class UploadProductView extends GetView<UploadProductController> {
         Row(
           children: [
             Text(
-              'Size (ml)',
+              'Internal Size Category',
               style: AppTextStyles.titleLarge.copyWith(fontSize: 15),
             ),
             const SizedBox(width: 6),
             Text(
-              '— required',
+              '— for organization',
               style: AppTextStyles.bodyMedium.copyWith(
                 fontSize: 12,
-                color: AppColors.danger.withValues(alpha: 0.8),
+                color: AppColors.textDark.withValues(alpha: 0.5),
               ),
             ),
           ],

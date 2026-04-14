@@ -70,6 +70,8 @@ class AllProductsView extends GetView<AllProductsController> {
           _buildBrandFilter(),
           // ── Category filter row ──────────────────────────────────────────
           _buildCategoryFilter(),
+          // ── Size category filter row ──────────────────────────────────────
+          _buildSizeCategoryFilter(),
           // ── Product grid ─────────────────────────────────────────────────
           Expanded(
             child: Obx(() {
@@ -221,6 +223,58 @@ class AllProductsView extends GetView<AllProductsController> {
               ),
             ],
           ),
+        ),
+      );
+    });
+  }
+
+  // ── Size category filter row ──────────────────────────────────────────────────
+
+  Widget _buildSizeCategoryFilter() {
+    return Obx(() {
+      final sizes = [30, 50, 100, 200];
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 6),
+              child: Text(
+                'Size category',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark.withValues(alpha: 0.5),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _filterChip(
+                    label: 'All',
+                    selected: controller.selectedSize.value == null,
+                    onTap: () => controller.selectSize(null),
+                    color: AppColors.accent,
+                  ),
+                  ...sizes.map(
+                    (ml) => _filterChip(
+                      label: '${ml}ml',
+                      selected: controller.selectedSize.value == ml,
+                      onTap: () => controller.selectSize(ml),
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       );
     });
@@ -399,112 +453,6 @@ class AllProductsView extends GetView<AllProductsController> {
                           ),
                         ),
 
-                        const Divider(height: 20),
-
-                        // ── Size (ml) filter ─────────────────────────
-                        Text(
-                          'Size',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF212121),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Obx(() {
-                          final sizes = controller.availableSizes;
-                          if (sizes.isEmpty) {
-                            return Text(
-                              'No size data on current products.',
-                              style: _sheetSub,
-                            );
-                          }
-                          return Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              // "All" chip
-                              GestureDetector(
-                                onTap: () => setModalState(
-                                    () => localSize = null),
-                                child: AnimatedContainer(
-                                  duration: const Duration(
-                                      milliseconds: 160),
-                                  padding:
-                                      const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: localSize == null
-                                        ? AppColors.primary
-                                        : Colors.white,
-                                    borderRadius:
-                                        BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: localSize == null
-                                          ? AppColors.primary
-                                          : Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'All',
-                                    style: TextStyle(
-                                      color: localSize == null
-                                          ? Colors.white
-                                          : const Color(0xFF212121),
-                                      fontSize: 13,
-                                      fontWeight: localSize == null
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              ...sizes.map((ml) {
-                                final selected = localSize == ml;
-                                return GestureDetector(
-                                  onTap: () => setModalState(
-                                      () => localSize = ml),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(
-                                        milliseconds: 160),
-                                    padding:
-                                        const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? AppColors.primary
-                                          : Colors.white,
-                                      borderRadius:
-                                          BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: selected
-                                            ? AppColors.primary
-                                            : Colors.grey.shade300,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      '${ml}ml',
-                                      style: TextStyle(
-                                        color: selected
-                                            ? Colors.white
-                                            : const Color(
-                                                0xFF212121),
-                                        fontSize: 13,
-                                        fontWeight: selected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ],
-                          );
-                        }),
-
                         const Divider(height: 24),
 
                         // ── Sort ─────────────────────────────────────
@@ -607,7 +555,6 @@ class AllProductsView extends GetView<AllProductsController> {
                                       .applyPriceFilterFromSheet(
                                           range);
                                   controller.setSort(localSort);
-                                  controller.selectSize(localSize);
                                   Navigator.pop(ctx);
                                 },
                                 style: FilledButton.styleFrom(
@@ -720,28 +667,7 @@ class _ProductCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Size badge
-                  if (product.size != null)
-                    Positioned(
-                      bottom: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${product.size}ml',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
+
                   Positioned(
                     top: 8,
                     right: 8,
@@ -796,6 +722,18 @@ class _ProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (product.unitSize != null && product.unitSize!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '${product.unitSize}${product.unitSize!.toLowerCase().contains('ml') ? '' : 'ml'}',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.secondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

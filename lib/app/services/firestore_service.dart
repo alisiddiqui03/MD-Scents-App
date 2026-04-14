@@ -31,6 +31,11 @@ class FirestoreService {
   static CollectionReference<Map<String, dynamic>> usersReviewsRef(String uid) =>
       usersCollection.doc(uid).collection('reviews');
 
+  /// User points history: users/{userId}/points_history
+  static CollectionReference<Map<String, dynamic>> usersPointsHistoryRef(
+          String uid) =>
+      usersCollection.doc(uid).collection('points_history');
+
   /// Product-specific reviews: products/{productId}/reviews
   static CollectionReference<Map<String, dynamic>> productReviewsRef(
           String productId) =>
