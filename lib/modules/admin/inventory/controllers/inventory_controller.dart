@@ -107,6 +107,11 @@ class InventoryController extends GetxController {
         final adsWatched = (d['adsWatchedCount'] as num?)?.toInt() ?? 0;
         final received = d['hasReceivedWelcomeDiscount'] as bool? ?? false;
         final used = d['hasUsedWelcomeDiscount'] as bool? ?? false;
+        final isVip = d['isVip'] as bool? ?? false;
+        final vipType = (d['vipType'] as String?)?.trim();
+        final vipEnd = (d['vipEndDate'] is Timestamp)
+            ? (d['vipEndDate'] as Timestamp).toDate()
+            : null;
         return UserDiscountRow(
           uid: doc.id,
           name: (d['displayName'] as String?)?.trim().isNotEmpty == true
@@ -118,6 +123,9 @@ class InventoryController extends GetxController {
           adsWatchedCount: adsWatched < 0 ? 0 : adsWatched,
           hasReceivedWelcomeDiscount: received,
           hasUsedWelcomeDiscount: used,
+          isVip: isVip,
+          vipType: vipType,
+          vipEndDate: vipEnd,
         );
       }).toList()
         ..sort(
@@ -129,6 +137,11 @@ class InventoryController extends GetxController {
       isUserDiscountsLoading.value = false;
     });
   }
+
+  bool isVipActive(UserDiscountRow u) {
+    if (!u.isVip || u.vipEndDate == null) return false;
+    return u.vipEndDate!.isAfter(DateTime.now());
+  }
 }
 
 class UserDiscountRow {
@@ -139,6 +152,9 @@ class UserDiscountRow {
     required this.adsWatchedCount,
     required this.hasReceivedWelcomeDiscount,
     required this.hasUsedWelcomeDiscount,
+    required this.isVip,
+    required this.vipType,
+    required this.vipEndDate,
   });
 
   final String uid;
@@ -147,6 +163,9 @@ class UserDiscountRow {
   final int adsWatchedCount;
   final bool hasReceivedWelcomeDiscount;
   final bool hasUsedWelcomeDiscount;
+  final bool isVip;
+  final String? vipType;
+  final DateTime? vipEndDate;
 }
 
 /// New uploads use ids like `p-<millisecondsSinceEpoch>` — sort those newest-first.

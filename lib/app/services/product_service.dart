@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../data/models/product.dart';
 import 'firestore_service.dart';
+import 'auth_service.dart';
 
 /// Central place to provide product/category/banner data.
 /// Now backed by Firestore for products, with static in-memory banners/categories.
@@ -67,7 +68,7 @@ class ProductService extends GetxService {
   List<CategoryItem> get categories => _categories;
 
   List<ProductItem> get latestProducts {
-    final list = _allProducts.where((p) => p.isActive).toList();
+    final list = _allProducts.where((p) => p.isActive && isVisibleToCurrentUser(p)).toList();
     _sortCatalogNewestFirst(list);
     return list;
   }
@@ -75,7 +76,7 @@ class ProductService extends GetxService {
   /// Home horizontal strip — admin marks products as featured when saving.
   List<ProductItem> get featuredProducts {
     final list = _allProducts
-        .where((p) => p.isActive && p.isFeatured)
+        .where((p) => p.isActive && p.isFeatured && isVisibleToCurrentUser(p))
         .toList();
     _sortCatalogNewestFirst(list);
     return list;
@@ -108,11 +109,18 @@ class ProductService extends GetxService {
     final set = <String>{};
     for (final p in _allProducts) {
       if (!p.isActive) continue;
+      if (!isVisibleToCurrentUser(p)) continue;
       final c = p.category?.trim();
       if (c != null && c.isNotEmpty) set.add(c);
     }
     final list = set.toList()..sort();
     return list;
+  }
+
+  bool isVisibleToCurrentUser(ProductItem p) {
+    if (!p.isVipOnly) return true;
+    final u = AuthService.to.currentUser.value;
+    return u?.isVipActive == true;
   }
 
   /// All catalog items (including inactive) with stock at or below [lowStockThreshold].

@@ -44,6 +44,12 @@ class PointHistoryItem {
         return 'Review Reward';
       case 'redeem':
         return 'Points Redeemed';
+      case 'order':
+        return 'Order Points';
+      case 'milestone':
+        return 'Milestone Reward';
+      case 'vip_high_roller':
+        return 'VIP High Roller Bonus';
       default:
         return 'Reward';
     }

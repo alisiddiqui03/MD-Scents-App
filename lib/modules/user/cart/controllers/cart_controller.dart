@@ -780,9 +780,24 @@ class CartController extends GetxController {
       );
 
       await FirestoreService.instance.runTransaction((txn) async {
+        // --- STEP 1: READ ONLY ---
+        // Gather all product snapshots first.
+        final productSnaps = <String, DocumentSnapshot<Map<String, dynamic>>>{};
         for (final item in items) {
           final pref = FirestoreService.productsCollection.doc(item.id);
-          final snap = await txn.get(pref);
+          productSnaps[item.id] = await txn.get(pref);
+        }
+
+        // Gather user snapshot (required for wallet balance, rewards, milestones).
+        final userRef = FirestoreService.usersCollection.doc(user.uid);
+        final userSnapForRewards = await txn.get(userRef);
+        final userDataForRewards =
+            userSnapForRewards.data() ?? <String, dynamic>{};
+
+        // --- STEP 2: PROCESS & VALIDATE ---
+        // Validate stocks from the snapshots we already read.
+        for (final item in items) {
+          final snap = productSnaps[item.id]!;
           if (!snap.exists) {
             throw StateError('Product "${item.name}" is no longer available.');
           }
@@ -793,22 +808,11 @@ class CartController extends GetxController {
             );
           }
         }
-        for (final item in items) {
-          txn.update(FirestoreService.productsCollection.doc(item.id), {
-            'stock': FieldValue.increment(-item.qty.value),
-          });
-        }
 
-        final userRef = FirestoreService.usersCollection.doc(user.uid);
+        // Validate wallet balance (if applied).
         final userMerge = <String, dynamic>{};
-
-        if (applyBirthdayDiscount.value && canUseBirthdayDiscount) {
-          userMerge['birthdayDiscountUsedYear'] = DateTime.now().year;
-        }
-
         if (walletApplied > 0.009) {
-          final uSnap = await txn.get(userRef);
-          final w = uSnap.data()?['wallet'];
+          final w = userDataForRewards['wallet'];
           var bal = 0.0;
           var pend = 0.0;
           if (w is Map) {
@@ -824,14 +828,28 @@ class CartController extends GetxController {
           };
         }
 
+        if (applyBirthdayDiscount.value && canUseBirthdayDiscount) {
+          userMerge['birthdayDiscountUsedYear'] = DateTime.now().year;
+        }
+
         if (refVal.appliesReward && refVal.referrerUid != null) {
           userMerge['referredBy'] = refVal.referrerUid;
         }
 
+        // --- STEP 3: WRITE ONLY ---
+        // Update product stocks.
+        for (final item in items) {
+          txn.update(FirestoreService.productsCollection.doc(item.id), {
+            'stock': FieldValue.increment(-item.qty.value),
+          });
+        }
+
+        // Update user doc.
         if (userMerge.isNotEmpty) {
           txn.set(userRef, userMerge, SetOptions(merge: true));
         }
 
+        // Create referral record.
         if (refVal.appliesReward &&
             referralDocRef != null &&
             refVal.referrerUid != null) {
@@ -850,7 +868,18 @@ class CartController extends GetxController {
           });
         }
 
+        // Create order document.
         txn.set(orderRef, order.toMap());
+
+        // Apply rewards (Modular writes).
+        OrderService.to.applyPostOrderRewardsInTransaction(
+          txn: txn,
+          userRef: userRef,
+          uid: user.uid,
+          userData: userDataForRewards,
+          order: order,
+          now: placedAt,
+        );
       });
 
       try {

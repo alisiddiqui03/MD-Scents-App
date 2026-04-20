@@ -28,6 +28,7 @@ class UploadProductController extends GetxController {
   // ── Toggles ─────────────────────────────────────────────────────────────────
   final isFeatured = false.obs;
   final isActive = true.obs;
+  final isVipOnly = false.obs;
 
   // ── Size (ml) ────────────────────────────────────────────────────────────────
   /// Selected ml from [kSizeOptions]. Required before saving.
@@ -101,6 +102,7 @@ class UploadProductController extends GetxController {
 
         isFeatured.value = existing.isFeatured;
         isActive.value = existing.isActive;
+        isVipOnly.value = existing.isVipOnly;
         selectedSize.value = existing.size;
         unitSizeController.text = existing.unitSize ?? '';
       }
@@ -278,6 +280,7 @@ class UploadProductController extends GetxController {
         imageUrls: urls,
         stock: stock,
         isActive: isActive.value,
+        isVipOnly: isVipOnly.value,
         discountPercent: safeDiscount,
         isFeatured: isFeatured.value,
         description: desc.isEmpty ? null : desc,

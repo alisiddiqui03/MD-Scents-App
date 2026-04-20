@@ -11,6 +11,7 @@ import '../../../../app/data/models/product.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/services/brand_service.dart';
 import '../../../../app/widgets/discount_badge.dart';
+import '../../../../app/widgets/vip_exclusive_corner_badge.dart';
 
 class UserHomeView extends StatelessWidget {
   const UserHomeView({super.key});
@@ -709,6 +710,12 @@ class _ProductCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (product.isVipOnly)
+                    const Positioned(
+                      bottom: 6,
+                      right: 6,
+                      child: VipExclusiveCornerBadge(),
+                    ),
                 ],
               ),
             ),

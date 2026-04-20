@@ -25,6 +25,7 @@ abstract class Routes {
   static const USER_WALLET = _Paths.USER_WALLET;
   static const USER_WRITE_REVIEW = _Paths.USER_WRITE_REVIEW;
   static const USER_MY_REVIEWS = _Paths.USER_MY_REVIEWS;
+  static const USER_VIP_DASHBOARD = _Paths.USER_VIP_DASHBOARD;
 
   // Admin flow
   static const ADMIN_BASE = _Paths.ADMIN_BASE;
@@ -37,6 +38,7 @@ abstract class Routes {
   static const ADMIN_SETTINGS = _Paths.ADMIN_SETTINGS;
   static const ADMIN_ADS_DISCOUNT = _Paths.ADMIN_ADS_DISCOUNT;
   static const ADMIN_ALL_REVIEWS = _Paths.ADMIN_ALL_REVIEWS;
+  static const ADMIN_VIP_MANAGEMENT = _Paths.ADMIN_VIP_MANAGEMENT;
 }
 
 abstract class _Paths {
@@ -64,6 +66,7 @@ abstract class _Paths {
   static const USER_WALLET = '/user/wallet';
   static const USER_WRITE_REVIEW = '/user/write-review';
   static const USER_MY_REVIEWS = '/user/my-reviews';
+  static const USER_VIP_DASHBOARD = '/user/vip-dashboard';
 
   // Admin flow
   static const ADMIN_BASE = '/admin';
@@ -76,5 +79,6 @@ abstract class _Paths {
   static const ADMIN_SETTINGS = '/admin/settings';
   static const ADMIN_ADS_DISCOUNT = '/admin/ads-discount';
   static const ADMIN_ALL_REVIEWS = '/admin/all-reviews';
+  static const ADMIN_VIP_MANAGEMENT = '/admin/vip-management';
 }
 

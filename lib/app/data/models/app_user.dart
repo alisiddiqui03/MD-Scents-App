@@ -9,6 +9,16 @@ class AppUser {
   final bool birthdayRewardGiven;
   final int? birthdayDiscountUsedYear;
   final int points;
+  final DateTime? milestoneStartDate;
+  final int milestoneOrderCount;
+  final DateTime? lastMilestoneOrderTime;
+
+  final bool isVip;
+  final String? vipType; // "monthly" or "yearly"
+  final DateTime? vipStartDate;
+  final DateTime? vipEndDate;
+  final double vipHighRollerSpent;
+  final bool vipHighRollerRewardGiven;
 
   /// Public share code (unique; stored in Firestore + `referralCodes/{code}`).
   final String? referralCode;
@@ -27,9 +37,25 @@ class AppUser {
     this.referralCode,
     this.referredBy,
     this.points = 0,
+    this.milestoneStartDate,
+    this.milestoneOrderCount = 0,
+    this.lastMilestoneOrderTime,
+    this.isVip = false,
+    this.vipType,
+    this.vipStartDate,
+    this.vipEndDate,
+    this.vipHighRollerSpent = 0.0,
+    this.vipHighRollerRewardGiven = false,
   });
 
   bool get isAdmin => role == 'admin';
+
+  /// Single source of truth: VIP is active only with a valid future end date.
+  bool get isVipActive {
+    return isVip == true &&
+        vipEndDate != null &&
+        vipEndDate!.isAfter(DateTime.now());
+  }
 
   factory AppUser.fromMap(String uid, Map<String, dynamic>? data) {
     final map = data ?? <String, dynamic>{};
@@ -46,6 +72,18 @@ class AppUser {
       referralCode: map['referralCode'] as String?,
       referredBy: map['referredBy'] as String?,
       points: (map['points'] as num?)?.toInt() ?? 0,
+      milestoneStartDate: (map['milestoneStartDate'] as Timestamp?)?.toDate(),
+      milestoneOrderCount: (map['milestoneOrderCount'] as num?)?.toInt() ?? 0,
+      lastMilestoneOrderTime:
+          (map['lastMilestoneOrderTime'] as Timestamp?)?.toDate(),
+      isVip: map['isVip'] as bool? ?? false,
+      vipType: map['vipType'] as String?,
+      vipStartDate: (map['vipStartDate'] as Timestamp?)?.toDate(),
+      vipEndDate: (map['vipEndDate'] as Timestamp?)?.toDate(),
+      vipHighRollerSpent:
+          (map['vipHighRollerSpent'] as num?)?.toDouble() ?? 0.0,
+      vipHighRollerRewardGiven:
+          map['vipHighRollerRewardGiven'] as bool? ?? false,
     );
   }
 
@@ -58,6 +96,18 @@ class AppUser {
       'birthdayRewardGiven': birthdayRewardGiven,
       'birthdayDiscountUsedYear': birthdayDiscountUsedYear,
       'points': points,
+      'milestoneStartDate':
+          milestoneStartDate != null ? Timestamp.fromDate(milestoneStartDate!) : null,
+      'milestoneOrderCount': milestoneOrderCount,
+      'lastMilestoneOrderTime': lastMilestoneOrderTime != null
+          ? Timestamp.fromDate(lastMilestoneOrderTime!)
+          : null,
+      'isVip': isVip,
+      'vipType': vipType,
+      'vipStartDate': vipStartDate != null ? Timestamp.fromDate(vipStartDate!) : null,
+      'vipEndDate': vipEndDate != null ? Timestamp.fromDate(vipEndDate!) : null,
+      'vipHighRollerSpent': vipHighRollerSpent,
+      'vipHighRollerRewardGiven': vipHighRollerRewardGiven,
     };
     if (referralCode != null) m['referralCode'] = referralCode;
     if (referredBy != null) m['referredBy'] = referredBy;

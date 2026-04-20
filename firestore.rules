@@ -165,6 +165,43 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // User submits VIP payment proof; admin verifies and activates.
+    match /vipRequests/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.planType in ['monthly', 'yearly']
+        && request.resource.data.status == 'pending'
+        && request.resource.data.screenshotUrl is string
+        && request.resource.data.keys().hasAll([
+          'uid',
+          'userName',
+          'userEmail',
+          'planType',
+          'planPrice',
+          'yearlySavingsPkr',
+          'screenshotUrl',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]);
+
+      // Owner: pending updates, or new pending submission after a previous approval (upgrade / re-pay).
+      allow update: if isAdmin() || (
+        isOwner(uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.planType in ['monthly', 'yearly']
+        && request.resource.data.status == 'pending'
+        && request.resource.data.screenshotUrl is string
+        && (!resource.data.keys().hasAny(['status'])
+          || resource.data.status == 'pending'
+          || resource.data.status == 'approved')
+      );
+
+      allow delete: if isAdmin();
+    }
+
     // Perfume brand directory: anyone reads, admin manages.
     match /brands/{brandId} {
       allow read: if true;

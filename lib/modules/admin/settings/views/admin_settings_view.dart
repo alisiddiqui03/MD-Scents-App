@@ -6,7 +6,6 @@ import '../../admin_base/controllers/admin_base_controller.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/services/auth_service.dart';
-import '../../../../app/services/admin_referrals_service.dart';
 import '../../../../app/routes/app_pages.dart';
 
 /// Admin profile + store controls — text tuned for light theme (dark on white).
@@ -469,66 +468,14 @@ class _QuickNavCard extends StatelessWidget {
             subtitle: 'User picture reviews & rewards',
             onTap: () => Get.toNamed('/admin/all-reviews'),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Opens the dedicated referral-orders hub (scrollable list, date filter, order detail).
-class _ReferralOrdersHubCard extends StatelessWidget {
-  const _ReferralOrdersHubCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _Card(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => Get.toNamed(Routes.ADMIN_REFERRALS),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: Obx(() {
-              AdminReferralsService.to.rows.length;
-              AdminReferralsService.to.isLoading.value;
-              final n = AdminReferralsService.to.rows.length;
-              final loading = AdminReferralsService.to.isLoading.value;
-
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                leading: Icon(
-                  Icons.card_giftcard_rounded,
-                  color: AppColors.success.withValues(alpha: 0.9),
-                  size: 26,
-                ),
-                title: Text(
-                  'Referral orders',
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.textDark,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                subtitle: Text(
-                  loading && n == 0
-                      ? 'Loading referral activity…'
-                      : n == 0
-                      ? 'No orders placed with a referral code yet.'
-                      : '$n referral record${n == 1 ? '' : 's'} — open for full list, filters & order details.',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textDark.withValues(alpha: 0.52),
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-                trailing: Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.textDark.withValues(alpha: 0.25),
-                ),
-              );
-            }),
+          const Divider(height: 1),
+          _QuickTile(
+            icon: Icons.workspace_premium_outlined,
+            label: 'VIP Requests & Activation',
+            subtitle: 'Payment proofs, user VIP data, activate plans',
+            onTap: () => Get.toNamed(Routes.ADMIN_VIP_MANAGEMENT),
           ),
-        ),
+        ],
       ),
     );
   }

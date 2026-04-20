@@ -13,6 +13,7 @@ class ProductItem {
   final bool isFeatured;
   final int stock;
   final bool isActive;
+  final bool isVipOnly;
   final String? category;
   final double discountPercent;
   /// Optional long text from Firestore (admin).
@@ -45,6 +46,7 @@ class ProductItem {
     this.isFeatured = false,
     this.stock = 0,
     this.isActive = true,
+    this.isVipOnly = false,
     this.category,
     this.discountPercent = 0,
     this.description,
@@ -85,6 +87,7 @@ class ProductItem {
       isFeatured: data['isFeatured'] as bool? ?? false,
       stock: (data['stock'] as num?)?.toInt() ?? 0,
       isActive: data['isActive'] as bool? ?? true,
+      isVipOnly: data['isVipOnly'] as bool? ?? false,
       category: data['category'] as String?,
       discountPercent: (data['discountPercent'] as num?)?.toDouble() ?? 0,
       description: () {
@@ -125,6 +128,7 @@ class ProductItem {
       'isFeatured': isFeatured,
       'stock': stock,
       'isActive': isActive,
+      'isVipOnly': isVipOnly,
       'category': category,
       'discountPercent': discountPercent,
       'description': description ?? '',

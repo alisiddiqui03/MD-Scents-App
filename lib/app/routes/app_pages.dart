@@ -38,6 +38,8 @@ import '../../modules/user/write_review/bindings/write_review_binding.dart';
 import '../../modules/user/write_review/views/write_review_view.dart';
 import '../../modules/user/my_reviews/bindings/my_reviews_binding.dart';
 import '../../modules/user/my_reviews/views/my_reviews_view.dart';
+import '../../modules/user/vip_dashboard/bindings/vip_dashboard_binding.dart';
+import '../../modules/user/vip_dashboard/views/vip_dashboard_view.dart';
 
 import '../../modules/admin/admin_base/bindings/admin_base_binding.dart';
 import '../../modules/admin/admin_base/views/admin_base_layout.dart';
@@ -59,6 +61,8 @@ import '../../modules/admin/ads_discount/bindings/admin_ads_discount_binding.dar
 import '../../modules/admin/ads_discount/views/admin_ads_discount_view.dart';
 import '../../modules/admin/all_reviews/bindings/admin_reviews_binding.dart';
 import '../../modules/admin/all_reviews/views/admin_reviews_view.dart';
+import '../../modules/admin/vip_management/bindings/admin_vip_management_binding.dart';
+import '../../modules/admin/vip_management/views/admin_vip_management_view.dart';
 
 part 'app_routes.dart';
 
@@ -168,6 +172,11 @@ class AppPages {
       page: () => const MyReviewsView(),
       binding: MyReviewsBinding(),
     ),
+    GetPage(
+      name: _Paths.USER_VIP_DASHBOARD,
+      page: () => const VipDashboardView(),
+      binding: VipDashboardBinding(),
+    ),
 
     // Admin base + tabs
     GetPage(
@@ -219,6 +228,11 @@ class AppPages {
       name: _Paths.ADMIN_ALL_REVIEWS,
       page: () => const AdminReviewsView(),
       binding: AdminReviewsBinding(),
+    ),
+    GetPage(
+      name: _Paths.ADMIN_VIP_MANAGEMENT,
+      page: () => const AdminVipManagementView(),
+      binding: AdminVipManagementBinding(),
     ),
   ];
 }

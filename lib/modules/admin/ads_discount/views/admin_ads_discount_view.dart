@@ -168,7 +168,10 @@ class _AdminDiscountCard extends StatelessWidget {
                     style: AppTextStyles.bodyMedium.copyWith(fontSize: 12),
                   ),
                   const SizedBox(height: 10),
-                  Text('Ad progression (fixed)', style: AppTextStyles.bodyLarge),
+                  Text(
+                    'Ad progression (fixed)',
+                    style: AppTextStyles.bodyLarge,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     '• 0% → 5%: +1% per 1 ad\n'
@@ -266,75 +269,146 @@ class _AdminUserDiscountMonitor extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('User Discount Monitor', style: AppTextStyles.bodyLarge),
+            Text('Users', style: AppTextStyles.bodyLarge),
             const SizedBox(height: 2),
             Text(
-              'Top users by current discount',
+              'Discount + VIP status (latest 8 users)',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textDark.withValues(alpha: 0.55),
                 fontSize: 12,
               ),
             ),
             const SizedBox(height: 10),
-            ...rows.map(
-              (u) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        u.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${u.currentDiscountPercent.toStringAsFixed(0)}%',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Ads: ${u.adsWatchedCount}',
-                      style: AppTextStyles.bodyMedium.copyWith(fontSize: 11),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (!u.hasUsedWelcomeDiscount &&
-                                u.hasReceivedWelcomeDiscount)
-                            ? AppColors.accent.withValues(alpha: 0.15)
-                            : AppColors.success.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        (!u.hasUsedWelcomeDiscount &&
-                                u.hasReceivedWelcomeDiscount)
-                            ? 'Welcome'
-                            : 'Ad mode',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            ...rows.map((u) => _UserRowTile(u: u, controller: controller)),
           ],
         ),
       );
     });
+  }
+}
+
+class _UserRowTile extends StatelessWidget {
+  const _UserRowTile({required this.u, required this.controller});
+
+  final UserDiscountRow u;
+  final InventoryController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final vipActive = controller.isVipActive(u);
+    final vipLabel = vipActive
+        ? 'VIP${(u.vipType ?? '').toLowerCase() == 'yearly' ? ' · Yearly' : ''}'
+        : (u.isVip ? 'Expired VIP' : 'Not VIP');
+    final modeLabel =
+        (!u.hasUsedWelcomeDiscount && u.hasReceivedWelcomeDiscount)
+        ? 'Welcome'
+        : 'Ad mode';
+    final modeColor =
+        (!u.hasUsedWelcomeDiscount && u.hasReceivedWelcomeDiscount)
+        ? AppColors.accent
+        : AppColors.success;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  u.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: vipActive
+                      ? AppColors.accent.withValues(alpha: 0.14)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  vipLabel,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: vipActive
+                        ? AppColors.accent
+                        : AppColors.textDark.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                '${u.currentDiscountPercent.toStringAsFixed(0)}%',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Ads: ${u.adsWatchedCount}',
+                style: AppTextStyles.bodyMedium.copyWith(fontSize: 11),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: modeColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  modeLabel,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: modeColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                'UID: ${u.uid.length > 10 ? u.uid.substring(0, 10) : u.uid}…',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 10,
+                  color: AppColors.textDark.withValues(alpha: 0.45),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Activation from Admin Profile',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 10,
+                  color: AppColors.textDark.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

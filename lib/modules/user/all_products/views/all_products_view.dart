@@ -7,6 +7,7 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/data/models/product.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/widgets/discount_badge.dart';
+import '../../../../app/widgets/vip_exclusive_corner_badge.dart';
 import '../controllers/all_products_controller.dart';
 
 class AllProductsView extends GetView<AllProductsController> {
@@ -695,6 +696,12 @@ class _ProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (product.isVipOnly)
+                    const Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: VipExclusiveCornerBadge(),
+                    ),
                 ],
               ),
             ),

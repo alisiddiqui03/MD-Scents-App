@@ -8,6 +8,7 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/services/auth_service.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/widgets/discount_badge.dart';
+import '../../../../app/widgets/vip_exclusive_corner_badge.dart';
 
 class ProductDetailView extends GetView<ProductDetailController> {
   const ProductDetailView({super.key});
@@ -286,6 +287,14 @@ class ProductDetailView extends GetView<ProductDetailController> {
                 left: 12,
                 bottom: 40,
                 child: DiscountBadge(text: discountLabel),
+              ),
+            if (controller.product.isVipOnly)
+              const Positioned(
+                top: 52,
+                right: 12,
+                child: IgnorePointer(
+                  child: VipExclusiveCornerBadge(),
+                ),
               ),
             Align(
               alignment: Alignment.topLeft,

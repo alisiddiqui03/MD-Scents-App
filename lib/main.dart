@@ -27,6 +27,9 @@ import 'app/services/review_service.dart';
 import 'app/services/address_service.dart';
 import 'app/services/admin_order_alert_service.dart';
 import 'app/services/brand_service.dart';
+import 'app/services/points_service.dart';
+import 'app/services/milestone_service.dart';
+import 'app/services/vip_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +70,9 @@ Future<void> main() async {
   Get.put<ReferralService>(ReferralService());
   Get.put<AdminReferralsService>(AdminReferralsService());
   Get.put<BrandService>(BrandService());
+  Get.put<PointsService>(PointsService());
+  Get.put<MilestoneService>(MilestoneService());
+  Get.put<VipService>(VipService());
 
   runApp(const MdScentsApp());
 }

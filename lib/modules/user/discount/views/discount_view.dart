@@ -7,6 +7,8 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/services/discount_service.dart';
 import '../../../../app/services/product_service.dart';
+import '../../../../app/services/auth_service.dart';
+import '../../../../app/widgets/milestone_tracker_widget.dart';
 
 class DiscountView extends GetView<DiscountController> {
   const DiscountView({super.key});
@@ -54,6 +56,14 @@ class DiscountView extends GetView<DiscountController> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildActiveDiscountBanner(),
+                      const SizedBox(height: 24),
+                      Obx(() {
+                        final u = AuthService.to.currentUser.value;
+                        if (u == null) return const SizedBox.shrink();
+                        return MilestoneTrackerWidget(
+                          milestoneOrderCount: u.milestoneOrderCount,
+                        );
+                      }),
                       const SizedBox(height: 24),
                       Text(
                         'Boost Your Discount',

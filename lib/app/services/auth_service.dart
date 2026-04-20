@@ -81,6 +81,10 @@ class AuthService extends GetxService {
         referralCode: null,
         referredBy: null,
         points: 0,
+        milestoneOrderCount: 0,
+        isVip: false,
+        vipHighRollerSpent: 0.0,
+        vipHighRollerRewardGiven: false,
       );
       await _firestore.collection('users').doc(user.uid).set({
         ...fallback.toMap(),
@@ -140,6 +144,10 @@ class AuthService extends GetxService {
       referralCode: null,
       referredBy: null,
       points: 0,
+      milestoneOrderCount: 0,
+      isVip: false,
+      vipHighRollerSpent: 0.0,
+      vipHighRollerRewardGiven: false,
     );
     await _firestore.collection('users').doc(user.uid).set({
       ...profile.toMap(),

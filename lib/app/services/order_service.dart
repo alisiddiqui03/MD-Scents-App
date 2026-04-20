@@ -8,6 +8,9 @@ import '../config/referral_constants.dart';
 import '../data/models/order.dart';
 import 'auth_service.dart';
 import 'firestore_service.dart';
+import 'milestone_service.dart';
+import 'points_service.dart';
+import 'vip_service.dart';
 
 /// Order data + admin-facing helpers backed by Firestore.
 class OrderService extends GetxService {
@@ -161,6 +164,59 @@ class OrderService extends GetxService {
         );
       } catch (_) {}
     }
+  }
+
+  /// Orchestrates all post-order reward logic inside the same Firestore transaction.
+  ///
+  /// IMPORTANT: Order placement writes (stock, wallet debit, referral doc, order doc)
+  /// must be done by the caller first; this method only handles points/milestones/VIP.
+  int applyPostOrderRewardsInTransaction({
+    required Transaction txn,
+    required DocumentReference<Map<String, dynamic>> userRef,
+    required String uid,
+    required Map<String, dynamic> userData,
+    required Order order,
+    DateTime? now,
+  }) {
+    final tNow = now ?? DateTime.now();
+
+    // VIP state is sourced from Firestore user doc (not from cached AuthService profile).
+    final isVipActive = VipService.to.isVipActiveFromUserData(userData, tNow);
+
+    // 1) Earn points for the order (VIP points boost applied here).
+    var pointsAfter = PointsService.to.handleOrderPoints(
+      txn: txn,
+      userRef: userRef,
+      uid: uid,
+      userData: userData,
+      order: order,
+      isVip: isVipActive,
+      now: tNow,
+    );
+
+    // 2) Milestone cycle & milestone rewards.
+    pointsAfter = MilestoneService.to.handleMilestone(
+      txn: txn,
+      userRef: userRef,
+      uid: uid,
+      userData: userData,
+      order: order,
+      currentPoints: pointsAfter,
+      now: tNow,
+    );
+
+    // 3) VIP high-roller bonus (yearly only).
+    pointsAfter = VipService.to.handleVipBenefits(
+      txn: txn,
+      userRef: userRef,
+      uid: uid,
+      userData: userData,
+      order: order,
+      currentPoints: pointsAfter,
+      now: tNow,
+    );
+
+    return pointsAfter;
   }
 
   /// Admin app: when order becomes [delivered], credit referrer PKR 500 once (Firestore transaction).

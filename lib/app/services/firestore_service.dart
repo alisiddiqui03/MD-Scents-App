@@ -59,5 +59,9 @@ class FirestoreService {
   /// Perfume brand directory: brands/{brandId} → { name, createdAt }
   static CollectionReference<Map<String, dynamic>> get brandsCollection =>
       instance.collection('brands');
+
+  /// VIP payment proof requests from users, reviewed by admin.
+  static CollectionReference<Map<String, dynamic>> get vipRequestsCollection =>
+      instance.collection('vipRequests');
 }
 

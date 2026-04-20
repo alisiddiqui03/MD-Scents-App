@@ -207,6 +207,26 @@ class UploadProductView extends GetView<UploadProductController> {
                       const Text('Active (visible to users)'),
                     ],
                   ),
+                  Row(
+                    children: [
+                      Obx(
+                        () => Switch(
+                          value: controller.isVipOnly.value,
+                          activeThumbColor: AppColors.accent,
+                          activeTrackColor:
+                              AppColors.accent.withValues(alpha: 0.45),
+                          onChanged: (v) => controller.isVipOnly.value = v,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'VIP exclusive (hide for non‑VIP)',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textDark.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
 
                   // ── Save button ───────────────────────────────────────────

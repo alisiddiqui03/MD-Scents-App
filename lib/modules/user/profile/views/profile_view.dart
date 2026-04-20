@@ -11,7 +11,9 @@ import '../../../../app/services/wallet_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../app/data/models/app_user.dart';
 import '../../../../app/widgets/app_branded_loading.dart';
+import '../../../../app/widgets/milestone_tracker_widget.dart';
 
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
@@ -34,8 +36,27 @@ class ProfileView extends GetView<ProfileController> {
                 children: [
                   const SizedBox(height: 16),
                   _buildWalletCard(),
+                  Obx(() {
+                    final u = AuthService.to.currentUser.value;
+                    if (u == null || !u.isVipActive) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      children: [
+                        const SizedBox(height: 14),
+                        _VipProfileHighlightCard(user: u),
+                      ],
+                    );
+                  }),
                   const SizedBox(height: 14),
                   _buildOrderStatsRow(),
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: MilestoneTrackerWidget(
+                      milestoneOrderCount: user.milestoneOrderCount,
+                    ),
+                  ),
                   if (user.isAdmin) ...[
                     const SizedBox(height: 14),
                     Padding(
@@ -72,7 +93,7 @@ class ProfileView extends GetView<ProfileController> {
             .toUpperCase();
 
     return SliverAppBar(
-      expandedHeight: 220,
+      expandedHeight: 264,
       pinned: true,
       backgroundColor: AppColors.primary,
       automaticallyImplyLeading: false,
@@ -87,11 +108,13 @@ class ProfileView extends GetView<ProfileController> {
           ),
           child: SafeArea(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 CircleAvatar(
-                  radius: 44,
+                  radius: 40,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
                   child: Text(
                     initials,
@@ -113,6 +136,71 @@ class ProfileView extends GetView<ProfileController> {
                     color: Colors.white.withValues(alpha: 0.75),
                   ),
                 ),
+                Obx(() {
+                  final u = AuthService.to.currentUser.value;
+                  if (u == null || !u.isVipActive) {
+                    return const SizedBox.shrink();
+                  }
+                  final end = u.vipEndDate!;
+                  final plan = (u.vipType ?? '').toLowerCase() == 'yearly'
+                      ? 'Yearly'
+                      : 'Monthly';
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 280),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.accent.withValues(alpha: 0.95),
+                              const Color(0xFFFFD700).withValues(alpha: 0.95),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.18),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.workspace_premium_rounded,
+                              color: Colors.white,
+                              size: 15,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'VIP · $plan · ${DateFormat('dd MMM yyyy').format(end)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
                 if (isAdmin) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -316,6 +404,15 @@ class ProfileView extends GetView<ProfileController> {
               subtitle: 'Your code, invites & rewards',
               color: AppColors.accent,
               onTap: () => Get.toNamed(Routes.USER_REFER_EARN),
+            ),
+          ),
+          _MenuItemTile(
+            item: _MenuItem(
+              icon: Icons.workspace_premium_outlined,
+              label: 'MD VIP Club',
+              subtitle: 'VIP benefits, milestones & high roller bonus',
+              color: AppColors.accent,
+              onTap: () => Get.toNamed(Routes.USER_VIP_DASHBOARD),
             ),
           ),
           _buildBirthdayTile(context),
@@ -560,7 +657,6 @@ class ProfileView extends GetView<ProfileController> {
   }
 
   void _showInfoDialog(
-
     BuildContext context, {
     required String title,
     required String content,
@@ -1147,6 +1243,122 @@ class _MenuItemTile extends StatelessWidget {
               size: 20,
             ),
       onTap: item.onTap,
+    );
+  }
+}
+
+class _VipProfileHighlightCard extends StatelessWidget {
+  const _VipProfileHighlightCard({required this.user});
+
+  final AppUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    final end = user.vipEndDate!;
+    final plan = (user.vipType ?? '').toLowerCase() == 'yearly'
+        ? 'Yearly'
+        : 'Monthly';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFFFF8E1),
+              AppColors.accent.withValues(alpha: 0.14),
+              AppColors.primary.withValues(alpha: 0.1),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFC9A227), Color(0xFFFFE082)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.workspace_premium_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MD VIP Member',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$plan plan · until ${DateFormat('dd MMM yyyy').format(end)}',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textDark.withValues(alpha: 0.65),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'ACTIVE',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Enjoy double points, exclusive products, and member perks.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 12,
+                height: 1.35,
+                color: AppColors.textDark.withValues(alpha: 0.58),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
