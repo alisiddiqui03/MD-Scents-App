@@ -41,7 +41,9 @@ class UploadProductView extends GetView<UploadProductController> {
 
                   // ── Brand dropdown ───────────────────────────────────────
                   _buildBrandSection(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  _buildGenderSection(),
+                  const SizedBox(height: 20),
 
                   // ── Perfume name ─────────────────────────────────────────
                   TextField(
@@ -237,6 +239,54 @@ class UploadProductView extends GetView<UploadProductController> {
           ),
         ),
       ),
+    );
+  }
+
+  // ── Gender section ──────────────────────────────────────────────────────────
+
+  Widget _buildGenderSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Gender',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textDark.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Obx(
+          () => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: controller.selectedGender.value,
+                isExpanded: true,
+                items: controller.genderOptions
+                    .map(
+                      (g) => DropdownMenuItem(
+                        value: g,
+                        child: Text(
+                          g.capitalizeFirst!,
+                          style: AppTextStyles.bodyMedium,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) controller.selectedGender.value = v;
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -461,7 +461,7 @@ class ProductDetailView extends GetView<ProductDetailController> {
           () {
             final stock = controller.product.stock;
             final q = controller.quantity.value;
-            final atMax = stock > 0 && q >= stock;
+            final atMax = stock <= 0 || q >= stock;
             final atMin = q <= 1;
             return Row(
               children: [
@@ -597,9 +597,10 @@ class ProductDetailView extends GetView<ProductDetailController> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        stock <= 0 ? 'Unavailable' : 'Add to Cart',
-                        style: AppTextStyles.buttonText.copyWith(
-                          color: Colors.white.withValues(alpha: canAdd ? 1 : 0.9),
+                        stock <= 0 ? 'OUT OF STOCK' : 'Add to Cart',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: Colors.white.withValues(alpha: canAdd ? 1 : 0.8),
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],

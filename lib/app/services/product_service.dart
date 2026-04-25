@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/product.dart';
 import 'firestore_service.dart';
 import 'auth_service.dart';
+import '../routes/app_pages.dart';
 
 /// Central place to provide product/category/banner data.
 /// Now backed by Firestore for products, with static in-memory banners/categories.
@@ -39,19 +40,32 @@ class ProductService extends GetxService {
 
   final List<BannerData> _banners = const [
     BannerData(
-      title: 'New Collection',
+      title: 'Explore Entire Collection',
       subtitle: 'Luxury Fragrances',
-      tag: 'Up to 30% OFF',
-    ),
-    BannerData(
-      title: 'Exclusive Oud',
-      subtitle: 'Arabian Nights',
       tag: 'Shop Now',
+      assetPath: 'assets/images/banners/banner_explore.jpg',
+      routeName: Routes.USER_ALL_PRODUCTS,
     ),
     BannerData(
-      title: 'Summer Bloom',
-      subtitle: 'Fresh & Floral',
+      title: 'Shop By Brands',
+      subtitle: 'Premium Selection',
       tag: 'Explore',
+      assetPath: 'assets/images/banners/banner_brands.jpg',
+      routeName: Routes.USER_ALL_PRODUCTS,
+    ),
+    BannerData(
+      title: 'Shop By Size',
+      subtitle: 'Choose your fit',
+      tag: '30ml - 200ml',
+      assetPath: 'assets/images/banners/banner_sizes.jpg',
+      routeName: Routes.USER_ALL_PRODUCTS,
+    ),
+    BannerData(
+      title: 'Shop By Gender',
+      subtitle: 'Find your scent',
+      tag: 'Male • Female • Unisex',
+      assetPath: 'assets/images/banners/banner_gender.jpg',
+      routeName: Routes.USER_ALL_PRODUCTS,
     ),
   ];
 

@@ -11,6 +11,7 @@ import '../../../../app/data/models/product.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/services/brand_service.dart';
 import '../../../../app/widgets/discount_badge.dart';
+import '../../../../app/widgets/diagonal_corner_ribbon.dart';
 import '../../../../app/widgets/vip_exclusive_corner_badge.dart';
 
 class UserHomeView extends StatelessWidget {
@@ -34,7 +35,11 @@ class UserHomeView extends StatelessWidget {
             children: [
               _buildHeroBanner(ctrl),
               const SizedBox(height: 20),
+              _buildShopBySizeSection(),
+              const SizedBox(height: 20),
               _buildBrandsSection(),
+              const SizedBox(height: 20),
+              _buildShopByGenderSection(),
               const SizedBox(height: 20),
               _buildSectionHeader(
                 'Latest Collection',
@@ -406,6 +411,183 @@ class UserHomeView extends StatelessWidget {
     );
   }
 
+  // ── Shop by Size horizontal scroll ──────────────────────────────────────────
+  Widget _buildShopBySizeSection() {
+    final sizes = [30, 50, 100, 200];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Shop by Size',
+          onViewAll: () => Get.toNamed(Routes.USER_ALL_PRODUCTS),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 35,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: sizes.length,
+            itemBuilder: (_, i) {
+              final ml = sizes[i];
+              return Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: GestureDetector(
+                  onTap: () => Get.toNamed(
+                    Routes.USER_ALL_PRODUCTS,
+                    arguments: {'size': ml},
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.success],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      '${ml}ml',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textLight,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShopByGenderSection() {
+    final genderData = [
+      {
+        'id': 'male',
+        'label': 'MEN',
+        'image': 'assets/images/genders/gender_men.png',
+      },
+      {
+        'id': 'female',
+        'label': 'WOMEN',
+        'image': 'assets/images/genders/gender_women.png',
+      },
+      {
+        'id': 'unisex',
+        'label': 'UNISEX',
+        'image': 'assets/images/genders/gender_unisex.png',
+      },
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Shop by Gender',
+          onViewAll: () => Get.toNamed(Routes.USER_ALL_PRODUCTS),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 200,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: genderData.length,
+            itemBuilder: (_, i) {
+              final g = genderData[i];
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: GestureDetector(
+                  onTap: () => Get.toNamed(
+                    Routes.USER_ALL_PRODUCTS,
+                    arguments: {'gender': g['id']},
+                  ),
+                  child: Container(
+                    width: 140,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(g['image']!, fit: BoxFit.cover),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.7),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 12,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                g['label']!,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   // ── Brands horizontal scroll ────────────────────────────────────────────────
 
   Widget _buildBrandsSection() {
@@ -421,7 +603,7 @@ class UserHomeView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 48,
+            height: 35,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -438,7 +620,7 @@ class UserHomeView extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
-                        vertical: 12,
+                        vertical: 10,
                       ),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
@@ -450,7 +632,7 @@ class UserHomeView extends StatelessWidget {
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.primary.withValues(alpha: 0.2),
-                            blurRadius: 8,
+                            blurRadius: 5,
                             offset: const Offset(0, 3),
                           ),
                         ],
@@ -483,129 +665,34 @@ class _BannerCard extends StatelessWidget {
 
   const _BannerCard({required this.data, required this.index});
 
-  static const _gradients = [
-    [Color(0xFF1F2A44), Color(0xFF8B5CF6)],
-    [Color(0xFF0F172A), Color(0xFF1F2A44)],
-    [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final colors = _gradients[index % _gradients.length];
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: () {
+        if (data.routeName != null) {
+          Get.toNamed(data.routeName!);
+        }
+      },
+      child: Container(
+        decoration: const BoxDecoration(color: Colors.black),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              data.assetPath,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: Colors.grey.shade900,
+                child: const Center(
+                  child: Icon(
+                    Icons.image_not_supported_outlined,
+                    color: Colors.white24,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -30,
-            top: -30,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 50,
-            bottom: -50,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-          // Right side perfume image
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: 160,
-            child: ClipRect(
-              child: Image.network(
-                'https://picsum.photos/seed/perfume1/300/300',
-                fit: BoxFit.cover,
-                color: Colors.white.withValues(alpha: 0.18),
-                colorBlendMode: BlendMode.modulate,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.water_drop_rounded,
-                  color: Colors.white.withValues(alpha: 0.2),
-                  size: 80,
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    data.tag,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  data.title,
-                  style: AppTextStyles.headlineMedium.copyWith(
-                    color: Colors.white,
-                    fontSize: 24,
-                  ),
-                ),
-                Text(
-                  data.subtitle,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Shop Now',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -644,79 +731,93 @@ class _ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(14),
-                    ),
-                    child: Image.network(
-                      product.imageUrl,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (_, child, progress) => progress == null
-                          ? child
-                          : Container(
-                              color: Colors.grey.shade100,
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(14),
+                ),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(14),
+                      ),
+                      child: Image.network(
+                        product.imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (_, child, progress) => progress == null
+                            ? child
+                            : Container(
+                                color: Colors.grey.shade100,
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade100,
-                        child: const Icon(
-                          Icons.water_drop_rounded,
-                          color: Colors.grey,
-                          size: 32,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.grey.shade100,
+                          child: const Icon(
+                            Icons.water_drop_rounded,
+                            color: Colors.grey,
+                            size: 32,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: 6,
-                    left: 6,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (product.isNew)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.success,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'NEW',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w700,
+                    if (product.stock == 0)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withValues(alpha: 0.35),
+                        ),
+                      ),
+                    if (product.stock == 0)
+                      const DiagonalCornerRibbon(text: 'OUT OF STOCK'),
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (product.isNew)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.success,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'NEW',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          ),
-                        if (discountLabel != null) ...[
-                          if (product.isNew) const SizedBox(height: 4),
-                          DiscountBadge(text: discountLabel),
+                          if (discountLabel != null) ...[
+                            if (product.isNew || product.stock == 0)
+                              const SizedBox(height: 4),
+                            DiscountBadge(text: discountLabel),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  if (product.isVipOnly)
-                    const Positioned(
-                      bottom: 6,
-                      right: 6,
-                      child: VipExclusiveCornerBadge(),
-                    ),
-                ],
+                    if (product.isVipOnly)
+                      const Positioned(
+                        bottom: 6,
+                        right: 6,
+                        child: VipExclusiveCornerBadge(),
+                      ),
+                  ],
+                ),
               ),
             ),
             Padding(

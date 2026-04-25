@@ -9,7 +9,6 @@ import '../../../../app/services/wallet_service.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../app/routes/app_pages.dart';
-import '../../../../app/widgets/milestone_tracker_widget.dart';
 
 class VipDashboardView extends GetView<VipDashboardController> {
   const VipDashboardView({super.key});
@@ -51,19 +50,19 @@ class VipDashboardView extends GetView<VipDashboardController> {
               const SizedBox(height: 14),
               _VipPurchaseCard(controller: controller),
             ],
+            // const SizedBox(height: 14),
+            // MilestoneTrackerWidget(milestoneOrderCount: u.milestoneOrderCount),
             const SizedBox(height: 14),
-            MilestoneTrackerWidget(milestoneOrderCount: u.milestoneOrderCount),
+            _HighRollerCard(
+              spent: spent,
+              progress: progress,
+              threshold: threshold,
+              rewardGiven: u.vipHighRollerRewardGiven,
+              isYearly: isYearly,
+              isVip: vip,
+            ),
             const SizedBox(height: 14),
             _BenefitsCard(isVip: vip),
-            if (vip && isYearly) ...[
-              const SizedBox(height: 14),
-              _HighRollerCard(
-                spent: spent,
-                progress: progress,
-                threshold: threshold,
-                rewardGiven: u.vipHighRollerRewardGiven,
-              ),
-            ],
           ],
         );
       }),
@@ -173,7 +172,7 @@ class _NonVipHeaderCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               child: Text(
-                'Redeem (500 → 2500 PKR)',
+                'Redeem ',
                 style: AppTextStyles.bodyMedium.copyWith(
                   fontWeight: FontWeight.w800,
                   color: AppColors.textDark,
@@ -338,7 +337,7 @@ class _VipMemberStatusCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               child: Text(
-                'Redeem (500 → 2500 PKR)',
+                'Redeem ',
                 style: AppTextStyles.bodyMedium.copyWith(
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
@@ -818,7 +817,8 @@ class _BenefitsCard extends StatelessWidget {
           _benefitRow(
             icon: Icons.bolt_rounded,
             title: 'Double points',
-            subtitle: 'VIP earns 2 points per 200 PKR',
+            subtitle:
+                'Earn double points for same amount of money spent as non-VIP',
           ),
           const SizedBox(height: 10),
           _benefitRow(
@@ -925,27 +925,40 @@ class _HighRollerCard extends StatelessWidget {
     required this.progress,
     required this.threshold,
     required this.rewardGiven,
+    required this.isYearly,
+    required this.isVip,
   });
 
   final double spent;
   final double progress;
   final double threshold;
   final bool rewardGiven;
+  final bool isYearly;
+  final bool isVip;
 
   @override
   Widget build(BuildContext context) {
     final remaining = (threshold - spent).clamp(0.0, threshold);
+    final isEligible = isVip && isYearly;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isEligible
+              ? AppColors.accent.withValues(alpha: 0.3)
+              : Colors.grey.shade200,
+          width: isEligible ? 1.5 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: (isEligible ? AppColors.accent : Colors.black).withValues(
+              alpha: 0.06,
+            ),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -954,73 +967,280 @@ class _HighRollerCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                'High Roller Bonus',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontWeight: FontWeight.w800,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.trending_up_rounded,
+                  color: AppColors.accent,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'High Roller Bonus',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      'Yearly VIP Exclusive',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  '+10,000 pts',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accent,
+              ),
+              if (!isEligible)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_rounded,
+                        size: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'LOCKED',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Text(
-            rewardGiven
-                ? 'Bonus already granted.'
-                : remaining <= 0.01
-                ? 'Bonus will be granted on next eligible order transaction.'
-                : 'Spend PKR ${remaining.toStringAsFixed(0)} more to unlock.',
+            'The Ultimate Milestone',
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Spend PKR 1,000,000 within your yearly membership to unlock a massive point reward.',
             style: AppTextStyles.bodyMedium.copyWith(
               fontSize: 12,
-              color: AppColors.textDark.withValues(alpha: 0.65),
+              color: AppColors.textDark.withValues(alpha: 0.6),
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
+          const SizedBox(height: 18),
+          if (isEligible) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Progress',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  '${(progress * 100).toStringAsFixed(1)}%',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.accent,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 12,
+                backgroundColor: Colors.grey.shade100,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.accent,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'PKR ${NumberFormat('#,##,###').format(spent)}',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDark.withValues(alpha: 0.7),
+                  ),
+                ),
+                Text(
+                  'Goal: 1M',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDark.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (rewardGiven)
+              _statusBadge(
+                Icons.check_circle_rounded,
+                'Bonus Granted',
+                AppColors.success,
+              )
+            else if (remaining <= 0.01)
+              _statusBadge(
+                Icons.hourglass_empty_rounded,
+                'Pending verification...',
+                AppColors.accent,
+              )
+            else
+              _statusBadge(
+                Icons.info_outline_rounded,
+                'PKR ${NumberFormat('#,##,###').format(remaining)} more to go',
+                AppColors.textDark.withValues(alpha: 0.6),
+              ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.accent,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Upgrade to Yearly VIP to start tracking your High Roller progress.',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFFF9A825).withValues(alpha: 0.1),
+                  const Color(0xFFFBC02D).withValues(alpha: 0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFFF9A825).withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF9A825),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.stars_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '10,000 POINTS REWARD',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          color: const Color(0xFFBF8F00),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Equivalent to PKR 50,000 value in store credits.',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textDark.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'PKR ${spent.toStringAsFixed(0)}',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark.withValues(alpha: 0.7),
-                ),
-              ),
-              Text(
-                'PKR ${threshold.toStringAsFixed(0)}',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBadge(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
           ),
         ],
       ),

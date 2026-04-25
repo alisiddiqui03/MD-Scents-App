@@ -36,6 +36,10 @@ class AllProductsController extends GetxController {
   /// `null` = show all brands.
   final selectedBrand = Rxn<String>();
 
+  // ── Gender ───────────────────────────────────────────────────────────────────
+  /// `null` = show all genders.
+  final selectedGender = Rxn<String>();
+
   // ── Sort ──────────────────────────────────────────────────────────────────────
   final sort = AllProductsSort.newest.obs;
 
@@ -47,11 +51,23 @@ class AllProductsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Support navigation with pre-selected brand from home page
     final args = Get.arguments as Map<String, dynamic>?;
-    final brand = args?['brand'] as String?;
-    if (brand != null && brand.isNotEmpty) {
-      selectedBrand.value = brand;
+    if (args != null) {
+      // Support navigation with pre-selected brand
+      final brand = args['brand'] as String?;
+      if (brand != null && brand.isNotEmpty) {
+        selectedBrand.value = brand;
+      }
+      // Support navigation with pre-selected size
+      final size = args['size'] as int?;
+      if (size != null) {
+        selectedSize.value = size;
+      }
+      // Support navigation with pre-selected gender
+      final gender = args['gender'] as String?;
+      if (gender != null && gender.isNotEmpty) {
+        selectedGender.value = gender;
+      }
     }
   }
 
@@ -72,6 +88,7 @@ class AllProductsController extends GetxController {
     final range = appliedPriceRange.value;
     final size = selectedSize.value;
     final brand = selectedBrand.value;
+    final gender = selectedGender.value;
 
     var list =
         _productService.getAllProducts().where((p) => p.isActive).toList();
@@ -97,6 +114,11 @@ class AllProductsController extends GetxController {
     // Brand filter
     if (brand != null && brand.isNotEmpty) {
       list = list.where((p) => p.brandName == brand).toList();
+    }
+
+    // Gender filter
+    if (gender != null && gender.isNotEmpty) {
+      list = list.where((p) => (p.gender ?? 'unisex') == gender).toList();
     }
 
     // Sort
@@ -158,7 +180,8 @@ class AllProductsController extends GetxController {
   bool get anyFilterActive =>
       priceFilterActive.value ||
       selectedSize.value != null ||
-      selectedBrand.value != null;
+      selectedBrand.value != null ||
+      selectedGender.value != null;
 
   // ── Setters ───────────────────────────────────────────────────────────────────
 
@@ -167,6 +190,8 @@ class AllProductsController extends GetxController {
   void selectSize(int? size) => selectedSize.value = size;
 
   void selectBrand(String? brand) => selectedBrand.value = brand;
+
+  void selectGender(String? gender) => selectedGender.value = gender;
 
   /// Applies slider selection; if it covers full 0–1 lac, price filter is off.
   void applyPriceFilterFromSheet(RangeValues values) {

@@ -10,6 +10,7 @@ import '../../../../app/services/auth_service.dart';
 import '../../../../app/services/discount_service.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/services/wallet_service.dart';
+import '../../../../app/routes/app_pages.dart';
 
 class CartView extends GetView<CartController> {
   const CartView({super.key});
@@ -524,6 +525,10 @@ class CartView extends GetView<CartController> {
               ),
             ),
             const SizedBox(height: 12),
+            if (controller.items.isNotEmpty) ...[
+              _VipUpsellCard(controller: controller),
+              const SizedBox(height: 12),
+            ],
             if (showReferral) ...[
               Text(
                 'Referral code (first order only)',
@@ -604,8 +609,9 @@ class CartView extends GetView<CartController> {
                   Obx(
                     () => Switch(
                       value: controller.applyBirthdayDiscount.value,
-                      activeColor: Colors.pink,
-                      onChanged: (v) => controller.applyBirthdayDiscount.value = v,
+                      activeThumbColor: Colors.pink,
+                      onChanged: (v) =>
+                          controller.applyBirthdayDiscount.value = v,
                     ),
                   ),
                 ],
@@ -638,7 +644,7 @@ class CartView extends GetView<CartController> {
                 ),
                 Switch(
                   value: controller.applyWalletBalance.value && canUseWallet,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                   onChanged: canUseWallet
                       ? (v) {
                           controller.applyWalletBalance.value = v;
@@ -661,22 +667,23 @@ class CartView extends GetView<CartController> {
                 style: _deliveryInputTextStyle.copyWith(fontSize: 15),
                 cursorColor: AppColors.primary,
                 onChanged: controller.onWalletAmountChanged,
-                decoration: _deliveryFieldDecoration(
-                  label: 'Amount to use (PKR)',
-                  hint: 'Enter amount',
-                ).copyWith(
-                  suffixIcon: TextButton(
-                    onPressed: controller.applyMaxWallet,
-                    child: Text(
-                      'MAX',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                decoration:
+                    _deliveryFieldDecoration(
+                      label: 'Amount to use (PKR)',
+                      hint: 'Enter amount',
+                    ).copyWith(
+                      suffixIcon: TextButton(
+                        onPressed: controller.applyMaxWallet,
+                        child: Text(
+                          'MAX',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
               ),
             ],
             if (!canUseWallet && controller.items.isNotEmpty)
@@ -770,12 +777,31 @@ class CartView extends GetView<CartController> {
                   value: bankSav,
                 ),
               ],
+              const Divider(height: 12),
+              _SummaryRow(
+                label: 'Shipping',
+                value: controller.shippingFee,
+                valueSuffix: controller.isVipActive
+                    ? ' (VIP FREE)'
+                    : (controller.shippingFee == 0
+                          ? ' (Calculated at checkout)'
+                          : ''),
+              ),
               const Divider(height: 20),
             ] else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _SummaryRow(label: 'Subtotal', value: controller.subtotal),
+                  _SummaryRow(
+                    label: 'Shipping',
+                    value: controller.shippingFee,
+                    valueSuffix: controller.isVipActive
+                        ? ' (VIP FREE)'
+                        : (controller.shippingFee == 0
+                              ? ' (Calculated at checkout)'
+                              : ''),
+                  ),
                   if (bankSav > 0.009) ...[
                     const SizedBox(height: 8),
                     _SummaryDiscountRow(
@@ -1045,7 +1071,8 @@ class _CartItemCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (product?.unitSize != null && product!.unitSize!.isNotEmpty)
+                  if (product?.unitSize != null &&
+                      product!.unitSize!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
@@ -1103,13 +1130,14 @@ class _CartItemCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                GestureDetector(
-                  onTap: () => controller.removeItem(item.id),
-                  child: Icon(
-                    Icons.close,
-                    size: 16,
-                    color: AppColors.textDark.withValues(alpha: 0.4),
-                  ),
+                IconButton(
+                  onPressed: () => controller.removeItem(item.id),
+                  icon: const Icon(Icons.close),
+                  iconSize: 18,
+                  color: AppColors.textDark.withValues(alpha: 0.4),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 20,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -1302,11 +1330,15 @@ class _SummaryDiscountRow extends StatelessWidget {
 class _SummaryRow extends StatelessWidget {
   final String label;
   final double value;
+  final String? valuePrefix;
+  final String? valueSuffix;
   final bool isTotal;
 
   const _SummaryRow({
     required this.label,
     required this.value,
+    this.valuePrefix,
+    this.valueSuffix,
     this.isTotal = false,
   });
 
@@ -1322,7 +1354,7 @@ class _SummaryRow extends StatelessWidget {
               : AppTextStyles.bodyLarge,
         ),
         Text(
-          'PKR ${value.toStringAsFixed(0)}',
+          '${valuePrefix ?? ''}PKR ${value.toStringAsFixed(0)}${valueSuffix ?? ''}',
           style: isTotal
               ? AppTextStyles.titleLarge.copyWith(
                   color: AppColors.primary,
@@ -1334,5 +1366,121 @@ class _SummaryRow extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _VipUpsellCard extends StatelessWidget {
+  const _VipUpsellCard({required this.controller});
+  final CartController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final user = AuthService.to.currentUser.value;
+      if (user == null || user.isVipActive) return const SizedBox.shrink();
+
+      final points = (controller.merchandiseTotal / 200).floor();
+      final vipPoints = points * 2;
+
+      if (points <= 0) return const SizedBox.shrink();
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.accent.withValues(alpha: 0.12),
+              AppColors.primary.withValues(alpha: 0.08),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: AppColors.accent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Earn Double Points!',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Normal: $points pts → VIP: $vipPoints pts',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Normal Member: Shipping PKR 350-500\nVIP MEMBER: FREE SHIPPING',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 32,
+              child: TextButton(
+                onPressed: () => Get.toNamed(Routes.USER_VIP_DASHBOARD),
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  'JOIN',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }

@@ -25,6 +25,9 @@ class ProductItem {
   /// Brand name (e.g. "Creed"). Nullable for old products without a brand.
   final String? brandName;
 
+  /// Gender category (male | female | unisex).
+  final String? gender;
+
   /// Actual size shown to users (e.g. "80ml", "125ml"). Captures manual input.
   final String? unitSize;
 
@@ -52,6 +55,7 @@ class ProductItem {
     this.description,
     this.size,
     this.brandName,
+    this.gender,
     this.unitSize,
     this.createdAt,
     this.updatedAt,
@@ -101,6 +105,7 @@ class ProductItem {
         final b = data['brandName'] as String?;
         return (b == null || b.trim().isEmpty) ? null : b.trim();
       }(),
+      gender: data['gender'] as String? ?? 'unisex',
       unitSize: () {
         final u = data['unitSize'] as String?;
         return (u == null || u.trim().isEmpty) ? null : u.trim();
@@ -132,6 +137,7 @@ class ProductItem {
       'category': category,
       'discountPercent': discountPercent,
       'description': description ?? '',
+      'gender': gender ?? 'unisex',
     };
     if (size != null) map['size'] = size;
     if (brandName != null && brandName!.isNotEmpty) map['brandName'] = brandName;
@@ -156,10 +162,14 @@ class BannerData {
   final String title;
   final String subtitle;
   final String tag;
+  final String assetPath;
+  final String? routeName;
 
   const BannerData({
     required this.title,
     required this.subtitle,
     required this.tag,
+    required this.assetPath,
+    this.routeName,
   });
 }

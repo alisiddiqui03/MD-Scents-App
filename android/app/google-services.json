@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "206439401804-pv9n1imate0csred78ap505jeul1lem2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mdscents.app",
+            "certificate_hash": "d4af8e2f52c3f223144c460bfb1ce5ab343ae5dc"
+          }
+        },
+        {
           "client_id": "206439401804-sb2snf09qv9fc1jp4m5d8ifed0kbmed5.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

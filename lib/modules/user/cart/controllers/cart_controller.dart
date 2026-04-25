@@ -74,6 +74,11 @@ class CartController extends GetxController {
     return user.birthday!.month == now.month;
   }
 
+  bool get isVipActive {
+    final user = AuthService.to.currentUser.value;
+    return user?.isVipActive ?? false;
+  }
+
   bool get canUseBirthdayDiscount {
     if (!isBirthdayMonth) return false;
     final user = AuthService.to.currentUser.value;
@@ -327,7 +332,7 @@ class CartController extends GetxController {
   }
 
   double get subtotal =>
-      items.fold(0, (sum, item) => sum + item.unitPrice * item.qty.value);
+      items.fold(0, (total, item) => total + item.unitPrice * item.qty.value);
 
   double get userDiscountPercent {
     double d = _discountService.currentDiscountPercent.value;
@@ -338,6 +343,15 @@ class CartController extends GetxController {
   }
 
   double get userDiscountAmount => subtotal * (userDiscountPercent / 100);
+
+  double get shippingFee {
+    if (isVipActive) return 0;
+    if (referralPreviewFreeDelivery.value) return 0;
+    final city = deliveryCityController.text.trim().toLowerCase();
+    if (city.isEmpty) return 0;
+    // User requested: Karachi 500, Outside 350
+    return city.contains('karachi') ? 500 : 350;
+  }
 
   /// Subtotal after your discount % (welcome / ads), before bank-only extra discount.
   double get total => (subtotal - userDiscountAmount).clamp(0, double.infinity);
@@ -392,7 +406,7 @@ class CartController extends GetxController {
 
   /// Amount the customer still pays after wallet (COD / bank).
   double get payableTotal =>
-      (merchandiseTotal - walletAppliedAmount).clamp(0, double.infinity);
+      (merchandiseTotal + shippingFee - walletAppliedAmount).clamp(0, double.infinity);
 
   bool get isFirstOrderForReferralUi =>
       completedOrderCount.value == 0 || completedOrderCount.value == -1;
@@ -452,7 +466,7 @@ class CartController extends GetxController {
     return sum;
   }
 
-  int get totalQuantity => items.fold(0, (sum, item) => sum + item.qty.value);
+  double get totalQuantity => items.fold(0.0, (total, item) => total + item.qty.value);
 
   void addToCart(ProductItem product, {int qty = 1}) {
     if (qty < 1) return;

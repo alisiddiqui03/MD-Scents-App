@@ -38,6 +38,11 @@ class UploadProductController extends GetxController {
   /// Selected brand name (String) or null when none.
   final selectedBrand = Rxn<String>();
 
+  // ── Gender ───────────────────────────────────────────────────────────────────
+  /// Gender category (male | female | unisex).
+  final selectedGender = 'unisex'.obs;
+  final genderOptions = ['male', 'female', 'unisex'];
+
   /// When true, show the inline "Add new brand" input row.
   final isAddingNewBrand = false.obs;
 
@@ -104,6 +109,7 @@ class UploadProductController extends GetxController {
         isActive.value = existing.isActive;
         isVipOnly.value = existing.isVipOnly;
         selectedSize.value = existing.size;
+        selectedGender.value = existing.gender ?? 'unisex';
         unitSizeController.text = existing.unitSize ?? '';
       }
     }
@@ -286,6 +292,7 @@ class UploadProductController extends GetxController {
         description: desc.isEmpty ? null : desc,
         size: selectedSize.value,
         brandName: (brand != null && brand.isNotEmpty) ? brand : null,
+        gender: selectedGender.value,
         unitSize: unitSizeController.text.trim(),
       );
 

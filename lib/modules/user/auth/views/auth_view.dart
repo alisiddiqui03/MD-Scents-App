@@ -89,7 +89,7 @@ class AuthView extends GetView<AuthController> {
             borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
-                color: AppColors.secondary.withValues(alpha: 0.35),
+                color: AppColors.primary.withValues(alpha: 0.35),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),

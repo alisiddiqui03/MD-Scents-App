@@ -179,9 +179,7 @@ class AdminReviewsView extends GetView<AdminReviewsController> {
                                 return ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
                                   child: GestureDetector(
-                                    onTap: () {
-                                       // Optional full screen view
-                                    },
+                                    onTap: () => _showFullScreenImage(context, review.images[i]),
                                     child: CachedNetworkImage(
                                       imageUrl: review.images[i],
                                       width: 80,
@@ -212,6 +210,43 @@ class AdminReviewsView extends GetView<AdminReviewsController> {
           },
         );
       }),
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Get.dialog(
+      Dialog.fullscreen(
+        backgroundColor: Colors.black.withValues(alpha: 0.9),
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: Material(
+                color: Colors.transparent,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Get.back(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      useSafeArea: false,
     );
   }
 }

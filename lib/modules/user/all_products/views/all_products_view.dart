@@ -8,6 +8,7 @@ import '../../../../app/data/models/product.dart';
 import '../../../../app/services/product_service.dart';
 import '../../../../app/widgets/discount_badge.dart';
 import '../../../../app/widgets/vip_exclusive_corner_badge.dart';
+import '../../../../app/widgets/diagonal_corner_ribbon.dart';
 import '../controllers/all_products_controller.dart';
 
 class AllProductsView extends GetView<AllProductsController> {
@@ -41,7 +42,8 @@ class AllProductsView extends GetView<AllProductsController> {
               // brand is already shown as a row chip, but price/size come only
               // from the sheet, so the dot covers price + size).
               final active = controller.priceFilterActive.value ||
-                  controller.selectedSize.value != null;
+                  controller.selectedSize.value != null ||
+                  controller.selectedGender.value != null;
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -73,6 +75,8 @@ class AllProductsView extends GetView<AllProductsController> {
           _buildCategoryFilter(),
           // ── Size category filter row ──────────────────────────────────────
           _buildSizeCategoryFilter(),
+          // ── Gender filter row ───────────────────────────────────────────
+          _buildGenderFilter(),
           // ── Product grid ─────────────────────────────────────────────────
           Expanded(
             child: Obx(() {
@@ -85,6 +89,7 @@ class AllProductsView extends GetView<AllProductsController> {
                 final hasFilters = controller.priceFilterActive.value ||
                     controller.selectedSize.value != null ||
                     controller.selectedBrand.value != null ||
+                    controller.selectedGender.value != null ||
                     (controller.selectedCategory.value != null &&
                         controller.selectedCategory.value!.isNotEmpty);
                 scrollChild = ListView(
@@ -281,6 +286,58 @@ class AllProductsView extends GetView<AllProductsController> {
     });
   }
 
+  // ── Gender filter row ──────────────────────────────────────────────────────────
+
+  Widget _buildGenderFilter() {
+    return Obx(() {
+      final genders = ['male', 'female', 'unisex'];
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 6),
+              child: Text(
+                'Gender',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark.withValues(alpha: 0.5),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _filterChip(
+                    label: 'All',
+                    selected: controller.selectedGender.value == null,
+                    onTap: () => controller.selectGender(null),
+                    color: AppColors.secondary,
+                  ),
+                  ...genders.map(
+                    (g) => _filterChip(
+                      label: g.capitalizeFirst!,
+                      selected: controller.selectedGender.value == g,
+                      onTap: () => controller.selectGender(g),
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   Widget _filterChip({
     required String label,
     required bool selected,
@@ -336,7 +393,6 @@ class AllProductsView extends GetView<AllProductsController> {
     if (range.start >= range.end) range = bounds;
 
     AllProductsSort localSort = controller.sort.value;
-    int? localSize = controller.selectedSize.value;
 
     final mq = MediaQuery.of(context);
     final maxH = mq.size.height * 0.82;
@@ -613,96 +669,108 @@ class _ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                    child: Image.network(
-                      product.imageUrl,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        child: const Center(
-                          child: Icon(
-                            Icons.water_drop_outlined,
-                            color: AppColors.primary,
-                            size: 32,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      child: Image.network(
+                        product.imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          child: const Center(
+                            child: Icon(
+                              Icons.water_drop_outlined,
+                              color: AppColors.primary,
+                              size: 32,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (product.isNew)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.success,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'NEW',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
+                    if (product.stock == 0)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withValues(alpha: 0.35),
+                        ),
+                      ),
+                    if (product.stock == 0)
+                      const DiagonalCornerRibbon(text: 'OUT OF STOCK'),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (product.isNew)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.success,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'NEW',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          ),
-                        if (discountLabel != null) ...[
-                          if (product.isNew)
-                            const SizedBox(height: 4),
-                          DiscountBadge(text: discountLabel),
+                          if (discountLabel != null) ...[
+                            if (product.isNew || product.stock == 0)
+                              const SizedBox(height: 4),
+                            DiscountBadge(text: discountLabel),
+                          ],
                         ],
-                      ],
-                    ),
-                  ),
-
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GestureDetector(
-                      onTap: () => Get.snackbar(
-                        'Wishlist',
-                        '${product.name} added to wishlist.',
-                        snackPosition: SnackPosition.TOP,
-                        backgroundColor: AppColors.primary,
-                        colorText: Colors.white,
-                        borderRadius: 12,
-                        margin: const EdgeInsets.all(12),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.favorite_border_rounded,
-                          color: AppColors.danger,
-                          size: 16,
-                        ),
                       ),
                     ),
-                  ),
-                  if (product.isVipOnly)
-                    const Positioned(
-                      bottom: 8,
-                      left: 8,
-                      child: VipExclusiveCornerBadge(),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () => Get.snackbar(
+                          'Wishlist',
+                          '${product.name} added to wishlist.',
+                          snackPosition: SnackPosition.TOP,
+                          backgroundColor: AppColors.primary,
+                          colorText: Colors.white,
+                          borderRadius: 12,
+                          margin: const EdgeInsets.all(12),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.favorite_border_rounded,
+                            color: AppColors.danger,
+                            size: 16,
+                          ),
+                        ),
+                      ),
                     ),
-                ],
+                    if (product.isVipOnly)
+                      const Positioned(
+                        bottom: 8,
+                        left: 8,
+                        child: VipExclusiveCornerBadge(),
+                      ),
+                  ],
+                ),
               ),
             ),
             Padding(
