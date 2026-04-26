@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../controllers/cart_controller.dart';
@@ -377,16 +378,16 @@ class CartView extends GetView<CartController> {
           _bankRow('Bank', 'Meezan Bank'),
           const SizedBox(height: 6),
           _bankRow('Account Name', 'M Umair Siddiqui '),
-          const SizedBox(height: 6),
-          _bankRow('Account No.', '99520105774580'),
-          const SizedBox(height: 6),
-          _bankRow('IBAN', 'PK56MEZN0099520105774580'),
+          const SizedBox(height: 10),
+          _bankRow('Account No.', '99520105774580', canCopy: true),
+          const SizedBox(height: 10),
+          _bankRow('IBAN', 'PK56MEZN0099520105774580', canCopy: true),
         ],
       ),
     );
   }
 
-  Widget _bankRow(String label, String value) {
+  Widget _bankRow(String label, String value, {bool canCopy = false}) {
     return Row(
       children: [
         SizedBox(
@@ -403,11 +404,34 @@ class CartView extends GetView<CartController> {
           child: Text(
             value,
             style: AppTextStyles.bodyMedium.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+              fontWeight: canCopy ? FontWeight.w800 : FontWeight.w600,
+              fontSize: canCopy ? 15 : 13,
+              color: canCopy ? AppColors.primary : AppColors.textDark,
             ),
           ),
         ),
+        if (canCopy)
+          IconButton(
+            icon: const Icon(
+              Icons.copy_rounded,
+              size: 20,
+              color: AppColors.primary,
+            ),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: value));
+              Get.snackbar(
+                'Copied',
+                '$label copied to clipboard',
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: AppColors.success,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 1),
+                margin: const EdgeInsets.all(16),
+              );
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
       ],
     );
   }
@@ -783,9 +807,7 @@ class CartView extends GetView<CartController> {
                 value: controller.shippingFee,
                 valueSuffix: controller.isVipActive
                     ? ' (VIP FREE)'
-                    : (controller.shippingFee == 0
-                          ? ' (Calculated at checkout)'
-                          : ''),
+                    : (controller.shippingFee == 0 ? '' : ''),
               ),
               const Divider(height: 20),
             ] else
@@ -798,9 +820,7 @@ class CartView extends GetView<CartController> {
                     value: controller.shippingFee,
                     valueSuffix: controller.isVipActive
                         ? ' (VIP FREE)'
-                        : (controller.shippingFee == 0
-                              ? ' (Calculated at checkout)'
-                              : ''),
+                        : (controller.shippingFee == 0 ? '' : ''),
                   ),
                   if (bankSav > 0.009) ...[
                     const SizedBox(height: 8),

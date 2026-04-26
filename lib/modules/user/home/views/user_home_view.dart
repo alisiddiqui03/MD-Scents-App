@@ -478,21 +478,9 @@ class UserHomeView extends StatelessWidget {
 
   Widget _buildShopByGenderSection() {
     final genderData = [
-      {
-        'id': 'male',
-        'label': 'MEN',
-        'image': 'assets/images/genders/gender_men.png',
-      },
-      {
-        'id': 'female',
-        'label': 'WOMEN',
-        'image': 'assets/images/genders/gender_women.png',
-      },
-      {
-        'id': 'unisex',
-        'label': 'UNISEX',
-        'image': 'assets/images/genders/gender_unisex.png',
-      },
+      {'id': 'male', 'label': 'Men'},
+      {'id': 'female', 'label': 'Women'},
+      {'id': 'unisex', 'label': 'Unisex'},
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,7 +491,7 @@ class UserHomeView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 200,
+          height: 35,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -511,72 +499,39 @@ class UserHomeView extends StatelessWidget {
             itemBuilder: (_, i) {
               final g = genderData[i];
               return Padding(
-                padding: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.only(right: 10),
                 child: GestureDetector(
                   onTap: () => Get.toNamed(
                     Routes.USER_ALL_PRODUCTS,
                     arguments: {'gender': g['id']},
                   ),
                   child: Container(
-                    width: 140,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        colors: [AppColors.darkBackground, AppColors.accent],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          color: AppColors.secondary.withValues(alpha: 0.15),
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.asset(g['image']!, fit: BoxFit.cover),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.7),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 12,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                g['label']!,
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 12,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      g['label']!,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ),
