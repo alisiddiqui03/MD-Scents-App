@@ -131,6 +131,7 @@ class UserHomeView extends StatelessWidget {
       child: Stack(
         children: [
           PageView.builder(
+            controller: ctrl.pageController,
             itemCount: ctrl.banners.length,
             onPageChanged: ctrl.onBannerChanged,
             itemBuilder: (_, index) =>
@@ -146,7 +147,7 @@ class UserHomeView extends StatelessWidget {
                 children: List.generate(
                   ctrl.banners.length,
                   (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
+                    duration: const Duration(milliseconds: 5),
                     margin: const EdgeInsets.symmetric(horizontal: 3),
                     width: ctrl.currentBannerIndex.value == i ? 20 : 6,
                     height: 6,
